@@ -100,8 +100,7 @@ pub fn fuzz_loop(
             let fuzz_type = cond.get_fuzz_type();
             let handler = SearchHandler::new(running.clone(), &mut executor, &mut cond, buf);
             match fuzz_type {
-                FuzzType::ExploreFuzz | FuzzType::ExploitIntFuzz | FuzzType::ExploitMemFuzz => {
-                    debug_cmpid!(handler.cond.base.cmpid, "cond: {:?}", handler.cond);
+                FuzzType::ExploreFuzz => {
                     if handler.cond.is_time_expired() {
                         handler.cond.next_state();
                     }
@@ -110,29 +109,30 @@ pub fn fuzz_loop(
                     } else if handler.cond.state.is_det() {
                         DetFuzz::new(handler).run();
                     } else {
-                        IntGdSearch::new(handler, 25, false).run(&mut thread_rng());
+                        GdSearch::new(handler).run(&mut thread_rng());
                     }
-                },
-                FuzzType::ExploitRandFuzz => {
-                    // Use angora's random exploit, i.e. byte matching, etc.
+                }
+                FuzzType::ExploitIntFuzz | FuzzType::ExploitMemFuzz | FuzzType::ExploitRandFuzz => {
                     if handler.cond.state.is_one_byte() {
-                        OneByteFuzz::new(handler).run();
+                        let mut fz = OneByteFuzz::new(handler);
+                        fz.run();
+                        fz.handler.cond.to_unsolvable(); // to skip next time
                     } else {
                         ExploitFuzz::new(handler).run();
                     }
-                },
+                }
                 FuzzType::AFLFuzz => {
                     AFLFuzz::new(handler).run();
-                },
+                }
                 FuzzType::LenFuzz => {
                     LenFuzz::new(handler).run();
-                },
+                }
                 FuzzType::CmpFnFuzz => {
                     FnFuzz::new(handler).run();
-                },
+                }
                 FuzzType::OtherFuzz => {
                     warn!("Unknown fuzz type!!");
-                },
+                }
             }
         }
         #[cfg(debug_assertions)]

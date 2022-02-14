@@ -15,7 +15,6 @@ pub struct CondStmt {
     pub is_desirable: bool, // non-convex
     pub is_consistent: bool,
     pub fuzz_times: usize,
-    pub state_times: usize,
     pub state: CondState,
     pub num_minimal_optima: usize,
     pub linear: bool,
@@ -23,13 +22,7 @@ pub struct CondStmt {
 
 impl PartialEq for CondStmt {
     fn eq(&self, other: &CondStmt) -> bool {
-        if FuzzerConfig::get().belong() && self.base.belong != other.base.belong {
-            false
-        } else if FuzzerConfig::get().order() && self.base.order != other.base.order {
-            false
-        } else {
-            self.base.cmpid == other.base.cmpid && self.base.context == other.base.context
-        }
+        self.base.cmpid == other.base.cmpid && self.base.context == other.base.context
         // self.base == other.base
     }
 }
@@ -38,14 +31,9 @@ impl Eq for CondStmt {}
 
 impl Hash for CondStmt {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        if FuzzerConfig::get().belong() {
-            self.base.belong.hash(state);
-        } else if FuzzerConfig::get().order() {
-            self.base.order.hash(state);
-        } else {
-            self.base.cmpid.hash(state);
-            self.base.context.hash(state);
-        }
+        self.base.cmpid.hash(state);
+        self.base.context.hash(state);
+        self.base.order.hash(state);
     }
 }
 
@@ -61,7 +49,6 @@ impl CondStmt {
             is_consistent: true,
             is_desirable: true,
             fuzz_times: 0,
-            state_times: 0,
             state: CondState::default(),
             num_minimal_optima: 0,
             linear: false,
@@ -91,7 +78,7 @@ impl CondStmt {
                 } else {
                     FuzzType::OtherFuzz
                 }
-            },
+            }
         }
     }
 
@@ -121,22 +108,7 @@ impl CondStmt {
 
     #[inline(always)]
     pub fn is_first_time(&self) -> bool {
-        self.state_times == 1
-    }
-
-    /// The second time we try to solve a predicate,
-    /// we enable all possible dyn analysis to get a
-    /// more accurate information. Therefore, at some point
-    /// "second time" should be treated just like first time.
-    /// Thus the following call `more_than_twice` is equal
-    /// than previous `!is_first_time()`
-    #[inline(always)]
-    pub fn is_second_time(&self) -> bool {
-        self.state_times == 2
-    }
-    #[inline(always)]
-    pub fn more_than_twice(&self) -> bool {
-        self.state_times > 2
+        self.fuzz_times == 1
     }
 
     pub fn get_afl_cond(id: usize, speed: u32, edge_num: usize) -> Self {
@@ -162,7 +134,7 @@ impl CondStmt {
     /// On the other hand, the solver may have `solved` the cond, but due to control change, it's
     /// not reached.
     #[inline(always)]
-    pub fn is_solved(&self, output: i128) -> bool {
+    pub fn is_solved(&self, output: u64) -> bool {
         let exact = self.base.is_strict_equality();
         (exact && output == 0) || (!exact && output <= 0)
     }

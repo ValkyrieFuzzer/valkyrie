@@ -5,6 +5,7 @@ Gradient descend search
 */
 
 use super::*;
+use angora_common::defs;
 use std;
 
 pub struct GdSearch<'a> {
@@ -22,15 +23,15 @@ impl<'a> GdSearch<'a> {
 
     fn execute(&mut self, input: &MutInput) -> u64 {
         if self.handler.skip {
-            return self.handler.executor.last_f as u64;
+            return self.handler.executor.last_f;
         }
         debug!("input : {:?}", input);
         let f = self.handler.execute_cond(input);
-        f as u64
+        f
     }
 
     fn random_fuzz<T: Rng>(&mut self, rng: &mut T) {
-        let mut fmin = std::u64::MAX;
+        let mut fmin = defs::UNREACHABLE;
         let mut input = self.handler.get_f_input();
         let mut input_min = input.get_value();
         loop {
@@ -46,7 +47,7 @@ impl<'a> GdSearch<'a> {
                 break;
             }
         }
-        if fmin < std::u64::MAX {
+        if fmin < defs::UNREACHABLE {
             self.handler.cond.variables = input_min;
         }
     }
@@ -66,7 +67,7 @@ impl<'a> GdSearch<'a> {
             self.init_start_point(&mut input)
         };
 
-        if f0 == std::u64::MAX {
+        if f0 == defs::UNREACHABLE {
             self.random_fuzz(rng);
             return;
         }
@@ -109,7 +110,7 @@ impl<'a> GdSearch<'a> {
             ep_i += 1;
         }
 
-        if (self.handler.executor.last_f as u64) < std::u64::MAX {
+        if (self.handler.executor.last_f) < defs::UNREACHABLE {
             self.handler.cond.variables = input.get_value();
         }
     }
@@ -122,7 +123,7 @@ impl<'a> GdSearch<'a> {
     fn init_start_point(&mut self, input_min: &mut MutInput) -> u64 {
         debug!("Init start...");
         let mut input = input_min.clone();
-        let mut fmin = self.handler.execute_cond_direct() as u64;
+        let mut fmin = self.handler.execute_cond_direct();
 
         input.assign(&self.handler.cond.variables);
         let f1 = self.execute(&input);
@@ -169,7 +170,7 @@ impl<'a> GdSearch<'a> {
         _f0: u64,
         rng: &mut T,
     ) -> u64 {
-        let mut fmin = std::u64::MAX;
+        let mut fmin = defs::UNREACHABLE;
         let mut input = input_min.clone();
 
         // for _ in 0..config::MAX_RANDOM_SAMPLE_NUM {
@@ -232,7 +233,7 @@ impl<'a> GdSearch<'a> {
                 } else {
                     (true, false, f0 - f_plus)
                 }
-            },
+            }
         }
     }
 
@@ -252,7 +253,7 @@ impl<'a> GdSearch<'a> {
             self.handler.cond.linear = self.handler.cond.linear && l;
             g.sign = s;
             g.val = f;
-            // g.add(s, (f as f64 * (1 - config::GD_MOMENTUM_BETA) as u64));
+            // g.add(s, (f as f64 * (1 - config::GD_MOMENTUM_BETA) ));
         }
     }
 
@@ -317,7 +318,7 @@ impl<'a> GdSearch<'a> {
                 // until the gradient is not work
                 // or f_new > f_last
                 if f_new >= f_last {
-                    if f_new == std::u64::MAX || rng.gen_bool(config::GD_ESCAPE_RATIO) {
+                    if f_new == defs::UNREACHABLE || rng.gen_bool(config::GD_ESCAPE_RATIO) {
                         break;
                     }
                 }

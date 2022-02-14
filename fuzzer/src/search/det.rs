@@ -1,5 +1,4 @@
 use super::*;
-use angora_common::debug_cmpid;
 use std::cmp;
 
 pub struct DetFuzz<'a> {
@@ -11,13 +10,10 @@ impl<'a> DetFuzz<'a> {
         Self { handler }
     }
     pub fn bitflip1(&mut self) {
-        debug_cmpid!(self.handler.cond.base.cmpid, "detministic steps");
+        debug!("detministic steps");
         let mut input = self.handler.get_f_input();
-        let n = cmp::min(input.val_len() * 8, config::MAX_SEARCH_EXEC_NUM);
-
-        // Flip every single bit of input
+        let n = cmp::min(input.val_len() << 3, config::MAX_SEARCH_EXEC_NUM);
         for i in 0..n {
-            // Early exit if condition solved by chance
             if self.handler.cond.is_done() {
                 break;
             }

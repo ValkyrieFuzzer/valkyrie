@@ -36,7 +36,7 @@ pub static CHART_STAT_FILE: &str = "chart_stat.json";
 pub static PERSIST_TRACK_FILES: &str = "ANGORA_DISABLE_TMPFS";
 
 pub const SLOW_SPEED: u32 = 888888;
-pub const UNREACHABLE: i128 = std::i128::MAX;
+pub const UNREACHABLE: u64 = std::u64::MAX;
 
 // ** Cond Type
 // < 0xFF: simple if

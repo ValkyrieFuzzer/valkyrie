@@ -2,46 +2,23 @@
 get the output(objective) of the conds.
 */
 
-use angora_common::{cond_stmt_base::CondStmtBase, debug_cmpid, defs};
+use angora_common::{cond_stmt_base::CondStmtBase, defs};
 use std;
 
-const EPS: i128 = 1;
+const EPS: u64 = 1;
 pub trait CondOutput {
-    fn get_output(&self) -> i128;
+    fn get_output(&self) -> u64;
 }
 
 impl CondOutput for CondStmtBase {
     // relu
-    fn get_output(&self) -> i128 {
+    fn get_output(&self) -> u64 {
         let mut a = self.arg1;
         let mut b = self.arg2;
 
         if self.is_signed() {
             a = translate_signed_value(a, self.size);
             b = translate_signed_value(b, self.size);
-        }
-        let a = a as i128;
-        let b = b as i128;
-        /*
-        let a = if self.is_signed() {
-            translate_to_i128(a, self.size)
-        } else {
-            a as i128
-        };
-        let b = if self.is_signed() {
-            translate_to_i128(b, self.size)
-        } else {
-            b as i128
-        };
-        */
-        // Add special judge for special OP.
-        // This used to be taken care of as the default branch
-        // in the next match, but it's not making sense.
-        if self.op == defs::COND_AFL_OP
-            || self.op == defs::COND_FN_OP
-            || self.op == defs::COND_LEN_OP
-        {
-            return sub_abs(a, b);
         }
 
         let mut op = self.op & defs::COND_BASIC_MASK;
@@ -67,11 +44,14 @@ impl CondOutput for CondStmtBase {
             };
         }
 
+        // RELU: if f <= 0, we set f = 0.
+        // In other words, if we reach our goal, f = 0.
+
         let output = match op {
             defs::COND_ICMP_EQ_OP => {
-                // a == b : f = a - b
-                a - b
-            },
+                // a == b : f = abs(a - b)
+                sub_abs(a, b)
+            }
             defs::COND_ICMP_NE_OP => {
                 // a != b :
                 // f = 0 if a != b, and f = 1 if a == b
@@ -80,63 +60,67 @@ impl CondOutput for CondStmtBase {
                 } else {
                     0
                 }
-            },
+            }
             defs::COND_ICMP_SGT_OP | defs::COND_ICMP_UGT_OP => {
                 // a > b :
-                b - a + EPS
-            },
+                // f = 0 if a > b, and f = b - a + e if a <= b
+                if a > b {
+                    0
+                } else {
+                    b - a + EPS
+                }
+            }
             defs::COND_ICMP_UGE_OP | defs::COND_ICMP_SGE_OP => {
                 // a > = b
-                b - a
-            },
+                // f = 0 if a >= b, and f = b - a if a < b
+                if a >= b {
+                    0
+                } else {
+                    b - a
+                }
+            }
             defs::COND_ICMP_ULT_OP | defs::COND_ICMP_SLT_OP => {
                 // a < b :
-                a - b + EPS
-            },
+                // f = 0 if a < b, and f = a - b + e if a >= b
+                if a < b {
+                    0
+                } else {
+                    a - b + EPS
+                }
+            }
             defs::COND_ICMP_ULE_OP | defs::COND_ICMP_SLE_OP => {
                 // a < = b
-                a - b
-            },
+                // f = 0 if a <= b, and f = a - b if a > b
+                if a <= b {
+                    0
+                } else {
+                    a - b
+                }
+            }
             _ => {
                 //TODO : support float.
                 // if self.is_float() {
-                a - b
-            },
+                sub_abs(a, b)
+            }
         };
 
-        debug_cmpid!(
-            self.cmpid,
-            "id: 0x{:08x}, op: {} -> {}, size:{}, condition: {}, arg(0x{:x} 0x{:x}), output: {}",
-            self.cmpid,
-            self.op,
-            op,
-            self.size,
-            self.condition,
-            a,
-            b,
-            output
+        debug!(
+            "id: {}, op: {} -> {}, size:{}, condition: {}, arg(0x{:x} 0x{:x}), output: {}",
+            self.cmpid, self.op, op, self.size, self.condition, a, b, output
         );
 
         output
     }
 }
 
-fn sub_abs(arg1: i128, arg2: i128) -> i128 {
-    (arg1 - arg2).abs()
-}
-
-#[allow(unused)]
-fn translate_to_i128(v: u64, size: u32) -> i128 {
-    match size {
-        1 => v as i8 as i128,
-        2 => v as i16 as i128,
-        4 => v as i32 as i128,
-        8 => v as i64 as i128,
-        _ => v as i128,
+fn sub_abs(arg1: u64, arg2: u64) -> u64 {
+    if arg1 < arg2 {
+        arg2 - arg1
+    } else {
+        arg1 - arg2
     }
 }
 
-#[allow(unused)]
 fn translate_signed_value(v: u64, size: u32) -> u64 {
     match size {
         1 => {
@@ -150,7 +134,7 @@ fn translate_signed_value(v: u64, size: u32) -> u64 {
                 // [0, 127] -> [128, 255]
                 v + (std::i8::MAX as u64 + 1)
             }
-        },
+        }
 
         2 => {
             let mut s = v as i16;
@@ -161,7 +145,7 @@ fn translate_signed_value(v: u64, size: u32) -> u64 {
             } else {
                 v + (std::i16::MAX as u64 + 1)
             }
-        },
+        }
 
         4 => {
             let mut s = v as i32;
@@ -172,7 +156,7 @@ fn translate_signed_value(v: u64, size: u32) -> u64 {
             } else {
                 v + (std::i32::MAX as u64 + 1)
             }
-        },
+        }
 
         8 => {
             let mut s = v as i64;
@@ -183,7 +167,7 @@ fn translate_signed_value(v: u64, size: u32) -> u64 {
             } else {
                 v + (std::i64::MAX as u64 + 1)
             }
-        },
+        }
 
         _ => v,
     }

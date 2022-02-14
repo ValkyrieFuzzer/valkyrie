@@ -50,9 +50,9 @@ impl<'a> AFLFuzz<'a> {
             256
         };
         let max_choice = if config::ENABLE_MICRO_RANDOM_LEN {
-            60
+            8
         } else {
-            60
+            6
         };
 
         let choice_range = Uniform::new(0, max_choice);
@@ -117,153 +117,82 @@ impl<'a> AFLFuzz<'a> {
         }
     }
 
+    // TODO both endian?
     fn havoc_flip(&self, buf: &mut Vec<u8>, max_stacking: usize, choice_range: Uniform<u32>) {
         let mut rng = rand::thread_rng();
-        let max_len = angora_common::config::MAX_INPUT_LEN as u32;
+        let mut byte_len = buf.len() as u32;
         let use_stacking = 1 + rng.gen_range(0, max_stacking);
 
         for _ in 0..use_stacking {
-            let byte_len = buf.len() as u32;
-            if byte_len == 0 {
-                return;
-            }
             match rng.sample(choice_range) {
-                0..=3 => {
+                0 | 1 => {
                     // flip bit
                     let byte_idx: u32 = rng.gen_range(0, byte_len);
                     let bit_idx: u32 = rng.gen_range(0, 8);
                     buf[byte_idx as usize] ^= 128 >> bit_idx;
-                },
-                4..=15 => {
-                    // set interesting value
+                }
+                2 | 3 => {
+                    //add or sub
                     let n: u32 = rng.gen_range(0, 3);
-                    // Random size
                     let size = IDX_TO_SIZE[n as usize];
                     if byte_len > size as u32 {
-                        let byte_idx: u32 = rng.gen_range(0, byte_len - size as u32 + 1);
-                        let vals = get_interesting_bytes(size);
-                        let wh = rng.gen_range(0, vals.len() as u32);
-                        // Random value with that size
-                        let mut val = vals[wh as usize];
-                        // Random endianness for the value
-                        if rng.gen_bool(0.5) {
-                            val = mut_input::reverse_endian(val, size)
-                        }
-                        mut_input::set_val_in_buf(buf, byte_idx as usize, size, val);
-                    }
-                },
-                16..=39 => {
-                    // random add or sub
-                    let n: u32 = rng.gen_range(0, 3);
-                    // Random size
-                    let size = IDX_TO_SIZE[n as usize];
-                    if byte_len > size as u32 {
-                        let byte_idx: u32 = rng.gen_range(0, byte_len - size as u32 + 1);
-                        // Random value
+                        let byte_idx: u32 = rng.gen_range(0, byte_len - size as u32);
                         let v: u32 = rng.gen_range(0, config::MUTATE_ARITH_MAX);
-                        // Random add or sub
                         let direction: bool = rng.gen();
-                        let swap_endian: bool = rng.gen();
                         mut_input::update_val_in_buf(
                             buf,
                             false,
                             byte_idx as usize,
                             size,
                             direction,
-                            swap_endian,
                             v as u64,
                         );
                     }
-                },
-                40..=43 => {
+                }
+                4 => {
+                    // set interesting value
+                    let n: u32 = rng.gen_range(0, 3);
+                    let size = IDX_TO_SIZE[n as usize];
+                    if byte_len > size as u32 {
+                        let byte_idx: u32 = rng.gen_range(0, byte_len - size as u32);
+                        let vals = get_interesting_bytes(size);
+                        let wh = rng.gen_range(0, vals.len() as u32);
+                        mut_input::set_val_in_buf(buf, byte_idx as usize, size, vals[wh as usize]);
+                    }
+                }
+                5 => {
                     // random byte
                     let byte_idx: u32 = rng.gen_range(0, byte_len);
                     let val: u8 = rng.gen();
                     buf[byte_idx as usize] = val;
-                },
-                44..=46 => {
-                    // Clone bytes.
-                    let mut size = self.random_block_len(byte_len);
-                    let from_idx: u32 = rng.gen_range(0, byte_len - size + 1);
-                    let before_idx: u32 = rng.gen_range(0, byte_len + 1);
-                    // clone's gonna extend the buf len, make sure it don't exceed
-                    // max input len.
-                    if size + byte_len > max_len {
-                        size = max_len - byte_len;
+                }
+                6 => {
+                    // delete bytes
+                    let remove_len: u32 = rng.gen_range(1, 5);
+                    if byte_len > remove_len {
+                        byte_len -= remove_len;
+                        //assert!(byte_len > 0);
+                        let byte_idx: u32 = rng.gen_range(0, byte_len);
+                        for _ in 0..remove_len {
+                            buf.remove(byte_idx as usize);
+                        }
                     }
-
-                    mut_input::insert_partial_buf(
-                        buf,
-                        buf[from_idx as usize..(from_idx + size) as usize]
-                            .iter()
-                            .cloned()
-                            .collect(),
-                        before_idx as usize,
-                    );
-                },
-                47 => {
-                    let mut size = self.random_block_len(byte_len);
-                    let before_idx: u32 = rng.gen_range(0, byte_len + 1);
-                    // clone's gonna extend the buf len, make sure it don't exceed
-                    // max input len.
-                    if size + byte_len > max_len {
-                        size = max_len - byte_len;
+                }
+                7 => {
+                    // insert bytes
+                    let add_len = rng.gen_range(1, 5);
+                    let new_len = byte_len + add_len;
+                    if new_len < config::MAX_INPUT_LEN as u32 {
+                        let byte_idx: u32 = rng.gen_range(0, byte_len);
+                        byte_len = new_len;
+                        for i in 0..add_len {
+                            buf.insert((byte_idx + i) as usize, rng.gen());
+                        }
                     }
-
-                    mut_input::insert_partial_buf(
-                        buf,
-                        vec![rng.gen(); size as usize],
-                        before_idx as usize,
-                    );
-                },
-                48..=50 => {
-                    // overwrite bytes.
-                    let size = self.random_block_len(byte_len);
-                    let from_idx: u32 = rng.gen_range(0, byte_len - size + 1);
-                    let to_idx: u32 = rng.gen_range(0, byte_len - size + 1);
-                    mut_input::overwrite_partial_buf(
-                        buf,
-                        from_idx as usize,
-                        size as usize,
-                        to_idx as usize,
-                    );
-                },
-                51 => {
-                    // overwrite bytes with constant
-                    let size = self.random_block_len(byte_len) as usize;
-                    let to_idx = rng.gen_range(0, byte_len - size as u32 + 1) as usize;
-                    buf[to_idx..to_idx + size].copy_from_slice(&vec![rng.gen(); size]);
-                },
-                52..=59 => {
-                    // Delete bytes.
-                    let size = self.random_block_len(byte_len) as usize;
-                    let from_idx = rng.gen_range(0, byte_len - size as u32 + 1) as usize;
-                    let mut new_buf = vec![0; byte_len as usize - size];
-                    new_buf[..from_idx].copy_from_slice(&buf[..from_idx]);
-                    new_buf[from_idx..].copy_from_slice(&buf[from_idx + size..]);
-                    *buf = new_buf;
-                },
-                _ => {},
+                }
+                _ => {}
             }
         }
-    }
-    fn random_block_len(&self, limit: u32) -> u32 {
-        let mut rng = rand::thread_rng();
-        let (mut min, max) = match rng.gen_range(0, 3) {
-            0 => (1, 32),
-            1 => (32, 128),
-            _ => {
-                if rng.gen_bool(0.9) {
-                    (128, 1500)
-                } else {
-                    (1500, angora_common::config::MAX_INPUT_LEN as u32)
-                }
-            },
-        };
-        if min >= limit {
-            min = std::cmp::min(1, limit - 1);
-        }
-        rng.gen_range(min, std::cmp::min(limit, max))
     }
 
     fn random_len(&mut self) {
@@ -351,6 +280,7 @@ mod tests {
         let buf2: Vec<u8> = vec![1, 2, 2, 2, 5, 6];
 
         let new_vec = AFLFuzz::splice_two_vec(&buf1, &buf2).unwrap();
+        println!("{:?}", new_vec);
         // split at index 2 or 3
         assert!(new_vec == vec![1, 2, 2, 4, 5, 6] || new_vec == vec![1, 2, 2, 2, 5, 6]);
     }

@@ -2,14 +2,11 @@
 
 static INTERESTING_V0: [u64; 1] = [0];
 
-static INTERESTING_V8: [u64; 12] = [
+static INTERESTING_V8: [u64; 9] = [
     128, /* Overflow signed 8-bit when decremented  */
     255, /* -1                                       */
     0,   /*                                         */
     1,   /*                                         */
-    2,   /*                                          */
-    3,   /*                                         */
-    4,   /*                                          */
     16,  /* One-off with common buffer size         */
     32,  /* One-off with common buffer size         */
     64,  /* One-off with common buffer size         */
@@ -17,14 +14,11 @@ static INTERESTING_V8: [u64; 12] = [
     127, /* Overflow signed 8-bit when incremented  */
 ];
 
-static INTERESTING_V16: [u64; 22] = [
+static INTERESTING_V16: [u64; 19] = [
     65408, /* Overflow signed 8-bit when decremented  */
     65535, /*                                         */
     0,     /*                                         */
     1,     /*                                         */
-    2,     /*                                          */
-    3,     /*                                         */
-    4,     /*                                          */
     16,    /* One-off with common buffer size         */
     32,    /* One-off with common buffer size         */
     64,    /* One-off with common buffer size         */
@@ -42,14 +36,11 @@ static INTERESTING_V16: [u64; 22] = [
     32767, /* Overflow signed 16-bit when incremented */
 ];
 
-static INTERESTING_V32: [u64; 30] = [
+static INTERESTING_V32: [u64; 27] = [
     4294967168, /* Overflow signed 8-bit when decremented  */
     4294967295, /*                                         */
     0,          /*                                         */
     1,          /*                                         */
-    2,          /*                                          */
-    3,          /*                                         */
-    4,          /*                                          */
     16,         /* One-off with common buffer size         */
     32,         /* One-off with common buffer size         */
     64,         /* One-off with common buffer size         */
@@ -83,6 +74,6 @@ pub fn get_interesting_bytes<'a>(width: usize) -> &'a [u64] {
         _ => {
             &INTERESTING_V0
             // do nothing
-        },
+        }
     }
 }

@@ -43,5 +43,5 @@ pub use self::det::DetFuzz;
 pub mod one_byte;
 pub use self::one_byte::OneByteFuzz;
 
-mod newgd;
-pub use self::newgd::IntGdSearch;
+//mod newgd;
+//pub use self::newgd::IntGdSearch;

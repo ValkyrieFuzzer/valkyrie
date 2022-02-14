@@ -30,7 +30,7 @@ pub struct Executor {
     fd: PipeFd,
     tmout_cnt: usize,
     invariable_cnt: usize,
-    pub last_f: i128,
+    pub last_f: u64,
     pub has_new_path: bool,
     pub global_stats: Arc<RwLock<stats::ChartStats>>,
     pub local_stats: stats::LocalStats,
@@ -124,7 +124,7 @@ impl Executor {
     }
 
     // FIXME: The location id may be inconsistent between track and fast programs.
-    fn check_consistent(&self, output: i128, cond: &mut cond_stmt::CondStmt) {
+    fn check_consistent(&self, output: u64, cond: &mut cond_stmt::CondStmt) {
         if output == defs::UNREACHABLE
             && cond.is_first_time()
             && self.local_stats.num_exec == 1.into()
@@ -135,7 +135,7 @@ impl Executor {
         }
     }
 
-    fn check_invariable(&mut self, output: i128, cond: &mut cond_stmt::CondStmt) -> bool {
+    fn check_invariable(&mut self, output: u64, cond: &mut cond_stmt::CondStmt) -> bool {
         let mut skip = false;
         if output == self.last_f {
             self.invariable_cnt += 1;
@@ -164,7 +164,7 @@ impl Executor {
         &self,
         cond: &mut cond_stmt::CondStmt,
         _status: StatusType,
-        output: i128,
+        output: u64,
         explored: &mut bool,
     ) -> bool {
         let mut skip = false;
@@ -184,7 +184,7 @@ impl Executor {
         &mut self,
         buf: &Vec<u8>,
         cond: &mut cond_stmt::CondStmt,
-    ) -> (StatusType, i128) {
+    ) -> (StatusType, u64) {
         self.run_init();
         self.t_conds.set(cond);
         let mut status = self.run_inner(buf);
@@ -305,22 +305,7 @@ impl Executor {
     /// Invoked by `run`, `run_with_cond`, `run_sync`
     fn do_if_has_new(&mut self, buf: &Vec<u8>, status: StatusType, _explored: bool, cmpid: u32) {
         // new edge: one byte in bitmap
-        let (mut has_new_path, mut has_new_edge, edge_num) = self.branches.has_new(status);
-        // If a path has two crashing points, there would be no path difference.
-        // We distinguish them using crashing output from asan.
-        if status == StatusType::Crash {
-            let tup = self.do_if_new_crash(buf, status);
-            has_new_path |= tup.0;
-            has_new_edge |= tup.1;
-        }
-        debug_cmpid!(
-            self.t_conds.cond.cmpid,
-            "has new path/edge: {}/{}, # edge: {}",
-            has_new_path,
-            has_new_edge,
-            edge_num
-        );
-
+        let (has_new_path, has_new_edge, edge_num) = self.branches.has_new(status);
         if has_new_path {
             self.has_new_path = true;
             debug_cmpid!(self.t_conds.cond.cmpid, "Has new path!");

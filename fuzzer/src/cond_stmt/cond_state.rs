@@ -25,7 +25,7 @@ impl Default for CondState {
 impl CondStmt {
     pub fn is_time_expired(&self) -> bool {
         ((self.state.is_det() || self.state.is_one_byte()) && !self.is_first_time())
-            || self.state_times >= config::STATE_FUZZ_TIME
+            || self.fuzz_times >= config::LONG_FUZZ_TIME
     }
 }
 
@@ -76,7 +76,6 @@ pub trait NextState {
 
 impl NextState for CondStmt {
     fn next_state(&mut self) {
-        self.state_times = 0;
         match self.state {
             CondState::Offset => {
                 if self.offsets_opt.len() > 0 {
@@ -84,24 +83,24 @@ impl NextState for CondStmt {
                 } else {
                     self.to_det();
                 }
-            },
+            }
             CondState::OneByte => {
                 if self.offsets_opt.len() > 0 {
                     self.to_offsets_opt();
                 } else {
                     self.to_unsolvable();
                 }
-            },
+            }
             CondState::OffsetOpt => {
                 self.to_offsets_all();
-            },
+            }
             CondState::OffsetAll => {
                 self.to_det();
-            },
+            }
             CondState::Deterministic => {
                 self.to_offsets_all_end();
-            },
-            _ => {},
+            }
+            _ => {}
         }
     }
 

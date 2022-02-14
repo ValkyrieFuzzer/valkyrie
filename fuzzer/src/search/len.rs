@@ -1,7 +1,6 @@
 // Assume it is direct and linear
 use super::*;
 use crate::cond_stmt::CondOutput;
-use angora_common::debug_cmpid;
 
 pub struct LenFuzz<'a> {
     handler: SearchHandler<'a>,
@@ -24,18 +23,17 @@ impl<'a> LenFuzz<'a> {
         lb2 => read size
         */
         //let offset = self.handler.cond.base.lb1 as usize;
-        let size = self.handler.cond.base.lb2 as i128;
-        let delta = self.handler.cond.base.get_output();
+        let size = self.handler.cond.base.lb2 as usize;
+        let delta = self.handler.cond.base.get_output() as usize;
         let mut buf = self.handler.buf.clone();
-        debug_cmpid!(
-            self.handler.cond.base.cmpid,
+        debug!(
             "len: delta {}, size: {}, buf_len: {}",
             delta,
             size,
             buf.len()
         );
         if delta > 0 {
-            let extended_len = (delta * size) as usize;
+            let extended_len = delta * size;
             if extended_len < config::MAX_INPUT_LEN {
                 let buf_len = buf.len();
                 if buf_len + extended_len < config::MAX_INPUT_LEN {

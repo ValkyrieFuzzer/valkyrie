@@ -20,7 +20,6 @@ impl<'a> SearchHandler<'a> {
         buf: Vec<u8>,
     ) -> Self {
         executor.local_stats.register(cond);
-        cond.state_times = cond.state_times + 1;
         cond.fuzz_times = cond.fuzz_times + 1;
         Self {
             running,
@@ -40,8 +39,8 @@ impl<'a> SearchHandler<'a> {
         match status {
             StatusType::Skip => {
                 self.skip = true;
-            },
-            _ => {},
+            }
+            _ => {}
         }
 
         // bonus
@@ -68,7 +67,7 @@ impl<'a> SearchHandler<'a> {
         self.process_status(status);
     }
 
-    pub fn execute_cond(&mut self, input: &MutInput) -> i128 {
+    pub fn execute_cond(&mut self, input: &MutInput) -> u64 {
         input.write_to_input(&self.cond.offsets, &mut self.buf);
         let (status, f_output) = self.executor.run_with_cond(&self.buf, self.cond);
         self.process_status(status);
@@ -76,7 +75,7 @@ impl<'a> SearchHandler<'a> {
         f_output
     }
 
-    pub fn execute_cond_direct(&mut self) -> i128 {
+    pub fn execute_cond_direct(&mut self) -> u64 {
         let (status, f_output) = self.executor.run_with_cond(&self.buf, self.cond);
         self.process_status(status);
         f_output
