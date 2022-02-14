@@ -84,24 +84,24 @@ impl NextState for CondStmt {
                 } else {
                     self.to_det();
                 }
-            },
+            }
             CondState::OneByte => {
                 if self.offsets_opt.len() > 0 {
                     self.to_offsets_opt();
                 } else {
                     self.to_unsolvable();
                 }
-            },
+            }
             CondState::OffsetOpt => {
                 self.to_offsets_all();
-            },
+            }
             CondState::OffsetAll => {
                 self.to_det();
-            },
+            }
             CondState::Deterministic => {
                 self.to_offsets_all_end();
-            },
-            _ => {},
+            }
+            _ => {}
         }
     }
 

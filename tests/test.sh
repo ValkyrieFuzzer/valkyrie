@@ -45,12 +45,16 @@ rm -f ${target}.fast ${target}.cmp ${target}.taint
 # export ANGORA_CUSTOM_FN_CONTEXT=0
 
 bin_dir=../bin/
-USE_FAST=1 ${bin_dir}/angora-clang ${target}.c -lz -lrt -o ${target}.fast
-#USE_FAST=1 ${bin_dir}/angora-clang ${target}.c -lz -lrt -Wl,--save-temps -o ${target}.fast
-#llc ${target}.fast.0.5.precodegen.bc -o ${target}.fast.s
-USE_TRACK=1 ${bin_dir}/angora-clang ${target}.c -lz -lrt -Wl,--save-temps -o ${target}.taint
-llvm-dis ${target}.taint.0.5.precodegen.bc
-llc ${target}.taint.0.5.precodegen.bc 
+ANGORA_USE_ASAN=1 USE_FAST=1 ${bin_dir}/angora-clang ${target}.c -lz -o ${target}.fast
+USE_TRACK=1 ${bin_dir}/angora-clang ${target}.c -lz -o ${target}.taint
+# USE_PIN=1 ${bin_dir}/angora-clang ${target}.c -lz -o ${target}.pin
+#LLVM_COMPILER=clang wllvm -O0 -g ${target}.c -lz -o ${target}
+#extract-bc ${target}
+#opt -load ../bin/unfold-branch-pass.so -unfold_branch_pass < ${target}.bc > ${target}2.bc
+#opt -load ../bin/angora-llvm-pass.so -angora_llvm_pass < ${target}2.bc > ${target}3.bc
+#opt -load ../bin/angora-llvm-pass.so -angora_llvm_pass -TrackMode < ${target}2.bc > ${target}4.bc
+#USE_FAST=1 ${bin_dir}/angora-clang ${target}.bc -lz -o ${target}.fast
+#USE_TRACK=1 ${bin_dir}/angora-clang ${target}.bc -lz -o ${target}.taint
 echo "Compile Done.."
 
 args_file="./${name}/args"

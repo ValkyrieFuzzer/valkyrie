@@ -1,13 +1,12 @@
 use super::{limit::SetLimit, *};
+
 use crate::{
     branches, command,
     cond_stmt::{self, NextState},
     depot, stats, track,
 };
-use angora_common::{
-    config::{self, FuzzerConfig},
-    debug_cmpid, defs,
-};
+use angora_common::{config, defs};
+
 use std::{
     collections::HashMap,
     path::Path,
@@ -44,12 +43,7 @@ impl Executor {
         global_stats: Arc<RwLock<stats::ChartStats>>,
     ) -> Self {
         // ** Share Memory **
-        let shm_id = format!(
-            "{:?}-{:?}-shm",
-            std::process::id(),
-            std::thread::current().id()
-        );
-        let mut branches = branches::Branches::new(global_branches, &shm_id);
+        let branches = branches::Branches::new(global_branches);
         let t_conds = cond_stmt::ShmConds::new();
 
         // ** Envs **
@@ -62,7 +56,10 @@ impl Executor {
             defs::MSAN_OPTIONS_VAR.to_string(),
             defs::MSAN_OPTIONS_CONTENT.to_string(),
         );
-        envs.insert(defs::BRANCHES_SHM_ENV_VAR.to_string(), shm_id);
+        envs.insert(
+            defs::BRANCHES_SHM_ENV_VAR.to_string(),
+            branches.get_id().to_string(),
+        );
         envs.insert(
             defs::COND_STMT_ENV_VAR.to_string(),
             t_conds.get_id().to_string(),
@@ -84,8 +81,6 @@ impl Executor {
             cmd.mem_limit,
         ));
 
-        branches.resize();
-
         Self {
             cmd,
             branches,
@@ -104,7 +99,6 @@ impl Executor {
     }
 
     pub fn rebind_forksrv(&mut self) {
-        info!("Rebinding forkserver");
         {
             // delete the old forksrv
             self.forksrv = None;
@@ -119,7 +113,6 @@ impl Executor {
             self.cmd.time_limit,
             self.cmd.mem_limit,
         );
-        self.branches.resize();
         self.forksrv = Some(fs);
     }
 
@@ -140,11 +133,7 @@ impl Executor {
         if output == self.last_f {
             self.invariable_cnt += 1;
             if self.invariable_cnt >= config::MAX_INVARIABLE_NUM {
-                debug_cmpid!(
-                    self.t_conds.cond.cmpid,
-                    "output is invariable! f: {}",
-                    output
-                );
+                debug!("output is invariable! f: {}", output);
                 if cond.is_desirable {
                     cond.is_desirable = false;
                 }
@@ -169,10 +158,10 @@ impl Executor {
     ) -> bool {
         let mut skip = false;
         // If crash or timeout, constraints after the point won't be tracked.
-        if cond.is_solved(output) && !cond.is_done()
+        if output == 0 && !cond.is_done()
         //&& status == StatusType::Normal
         {
-            debug_cmpid!(self.t_conds.cond.cmpid, "Explored this condition!(output = {}, is solved but not done, marked as done now.)", output);
+            debug!("Explored this condition!");
             skip = true;
             *explored = true;
             cond.mark_as_done();
@@ -206,75 +195,6 @@ impl Executor {
         (status, output)
     }
 
-    fn do_if_new_crash(&mut self, buf: &Vec<u8>, status: StatusType) -> (bool, bool, usize) {
-        let (san_status, san_stderr) =
-            self.run_with_san(buf, config::MEM_LIMIT_TRACK, self.cmd.time_limit);
-        if san_status != status {
-            warn!("Mismatched return status between sanitized program and instrumented program! asan status: {:?} fast status: {:?}, asan stderr: \"{}\"", san_status, status, san_stderr);
-            (false, false, 0)
-        } else {
-            info!("Crash! stderr: {}", san_stderr);
-            self.branches.dedup_crash(&san_stderr)
-        }
-    }
-
-    pub fn run_with_san(
-        &mut self,
-        _buf: &Vec<u8>,
-        mem_limit: u64,
-        time_limit: u64,
-    ) -> (StatusType, String) {
-        let orig_san_type = self.cmd.uses_asan;
-        self.cmd.uses_asan = true;
-
-        compiler_fence(Ordering::SeqCst);
-        let mut cmd = Command::new(&self.cmd.san.0);
-        let cmd = cmd
-            .args(&self.cmd.san.1)
-            .stdin(Stdio::null())
-            .env_clear()
-            .envs(&self.envs)
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .mem_limit(mem_limit)
-            .setsid()
-            .pipe_stdin(self.fd.as_raw_fd(), self.cmd.is_stdin);
-        let mut child = cmd.spawn().expect("Could not run target");
-
-        let timeout = time::Duration::from_secs(time_limit);
-        compiler_fence(Ordering::SeqCst);
-
-        let ret = match child.wait_timeout(timeout).unwrap() {
-            Some(san_status) => {
-                if let Some(status_code) = san_status.code() {
-                    if (self.cmd.uses_asan && status_code == defs::MSAN_ERROR_CODE)
-                        || (self.cmd.mode.is_pin_mode() && status_code > 128)
-                    {
-                        StatusType::Crash
-                    } else {
-                        StatusType::Normal
-                    }
-                } else {
-                    StatusType::Crash
-                }
-            }
-            None => {
-                // Timeout
-                // child hasn't exited yet
-                child.kill().expect("Could not send kill signal to child.");
-                child.wait().expect("Error during waiting for child.");
-                StatusType::Timeout
-            }
-        };
-        self.cmd.uses_asan = orig_san_type;
-        let mut stderr = vec![];
-        if let Some(mut f) = child.stderr {
-            use std::io::Read;
-            let _ = f.read(&mut stderr);
-        }
-        (ret, String::from_utf8(stderr).unwrap_or("".to_string()))
-    }
-
     fn try_unlimited_memory(&mut self, buf: &Vec<u8>, cmpid: u32) -> bool {
         let mut skip = false;
         self.branches.clear_trace();
@@ -301,29 +221,12 @@ impl Executor {
         skip
     }
 
-    /// Traverse coverage bitmap to check if any new path found
-    /// Invoked by `run`, `run_with_cond`, `run_sync`
     fn do_if_has_new(&mut self, buf: &Vec<u8>, status: StatusType, _explored: bool, cmpid: u32) {
         // new edge: one byte in bitmap
-        let (mut has_new_path, mut has_new_edge, edge_num) = self.branches.has_new(status);
-        // If a path has two crashing points, there would be no path difference.
-        // We distinguish them using crashing output from asan.
-        if status == StatusType::Crash {
-            let tup = self.do_if_new_crash(buf, status);
-            has_new_path |= tup.0;
-            has_new_edge |= tup.1;
-        }
-        debug_cmpid!(
-            self.t_conds.cond.cmpid,
-            "has new path/edge: {}/{}, # edge: {}",
-            has_new_path,
-            has_new_edge,
-            edge_num
-        );
+        let (has_new_path, has_new_edge, edge_num) = self.branches.has_new(status);
 
         if has_new_path {
             self.has_new_path = true;
-            debug_cmpid!(self.t_conds.cond.cmpid, "Has new path!");
             self.local_stats.find_new(&status);
             let id = self.depot.save(status, &buf, cmpid);
 
@@ -346,7 +249,7 @@ impl Executor {
                     let cond_stmts = self.track(id, buf, speed);
                     if cond_stmts.len() > 0 {
                         self.depot.add_entries(cond_stmts);
-                        if FuzzerConfig::get().enable_afl() {
+                        if self.cmd.enable_afl {
                             self.depot
                                 .add_entries(vec![cond_stmt::CondStmt::get_afl_cond(
                                     id, speed, edge_num,
@@ -367,7 +270,6 @@ impl Executor {
 
     pub fn run_sync(&mut self, buf: &Vec<u8>) {
         self.run_init();
-        debug_cmpid!(self.t_conds.cond.cmpid, "Syncing");
         let status = self.run_inner(buf);
         self.do_if_has_new(buf, status, false, 0);
     }
@@ -411,7 +313,6 @@ impl Executor {
         };
         compiler_fence(Ordering::SeqCst);
 
-        // debug_cmpid!(self.t_conds.cond.cmpid, "return status = {:?}", ret_status);
         ret_status
     }
 
@@ -442,8 +343,6 @@ impl Executor {
             self.cmd.track_path.clone(),
         );
 
-        debug_cmpid!(self.t_conds.cond.cmpid, "Running track");
-
         let t_now: stats::TimeIns = Default::default();
 
         self.write_test(buf);
@@ -452,7 +351,7 @@ impl Executor {
         let ret_status = self.run_target(
             &self.cmd.track,
             config::MEM_LIMIT_TRACK,
-            // self.cmd.time_limit *
+            //self.cmd.time_limit *
             config::TIME_LIMIT_TRACK,
         );
         compiler_fence(Ordering::SeqCst);
@@ -470,15 +369,8 @@ impl Executor {
             id as u32,
             speed,
             self.cmd.mode.is_pin_mode(),
-            FuzzerConfig::get().enable_exploitation(),
+            self.cmd.enable_exploitation,
         );
-
-        debug_cmpid!(
-            self.t_conds.cond.cmpid,
-            "Retrieved {} condition statements",
-            cond_list.len()
-        );
-        // debug_cmpid!(self.t_conds.cond.cmpid, "{:?}", cond_list);
 
         self.local_stats.track_time += t_now.into();
         cond_list
@@ -503,7 +395,7 @@ impl Executor {
         time_limit: u64,
     ) -> StatusType {
         let mut cmd = Command::new(&target.0);
-        let cmd = cmd
+        let mut child = cmd
             .args(&target.1)
             .stdin(Stdio::null())
             .env_clear()
@@ -512,8 +404,9 @@ impl Executor {
             .stderr(Stdio::null())
             .mem_limit(mem_limit.clone())
             .setsid()
-            .pipe_stdin(self.fd.as_raw_fd(), self.cmd.is_stdin);
-        let mut child = cmd.spawn().expect("Could not run target");
+            .pipe_stdin(self.fd.as_raw_fd(), self.cmd.is_stdin)
+            .spawn()
+            .expect("Could not run target");
 
         let timeout = time::Duration::from_secs(time_limit);
         let ret = match child.wait_timeout(timeout).unwrap() {

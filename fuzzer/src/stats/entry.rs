@@ -1,21 +1,9 @@
 use super::*;
 use colored::*;
 use serde_derive::Serialize;
+
 #[derive(
-    Default,
-    Clone,
-    Copy,
-    Eq,
-    PartialEq,
-    Add,
-    AddAssign,
-    Sub,
-    From,
-    Into,
-    Ord,
-    PartialOrd,
-    Serialize,
-    Debug,
+    Default, Clone, Copy, Eq, PartialEq, Add, AddAssign, From, Into, Ord, PartialOrd, Serialize,
 )]
 pub struct Counter(pub usize);
 

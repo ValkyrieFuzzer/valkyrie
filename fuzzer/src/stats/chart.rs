@@ -12,8 +12,6 @@ pub struct ChartStats {
 
     num_rounds: Counter,
     max_rounds: Counter,
-    min_rounds: Counter,
-    min_p: Counter,
     num_exec: Counter,
     speed: Average,
 
@@ -32,10 +30,6 @@ pub struct ChartStats {
 impl ChartStats {
     pub fn new() -> Self {
         Default::default()
-    }
-
-    pub fn min_rounds(&self) -> usize {
-        self.min_rounds.0
     }
 
     pub fn sync_from_local(&mut self, local: &mut LocalStats) {
@@ -59,7 +53,7 @@ impl ChartStats {
         st.num_crashes += local.num_crashes;
         self.num_crashes += local.num_crashes;
 
-        local.clear();
+        //local.clear();
     }
 
     pub fn sync_from_global(&mut self, depot: &Arc<Depot>, gb: &Arc<GlobalBranches>) {
@@ -74,25 +68,15 @@ impl ChartStats {
             Err(poisoned) => {
                 warn!("Lock poisoned. Results can be incorrect! Continuing...");
                 poisoned.into_inner()
-            },
+            }
         };
         self.search = Default::default();
         self.state = Default::default();
         self.fuzz.clear();
         let mut max_round = 0;
-        let mut min_round = 0xffff;
-        let mut min_priority = 0xffff;
-        for (item, p) in q.iter() {
-            if !p.is_done() && !item.is_done() {
-                if item.fuzz_times > max_round {
-                    max_round = item.fuzz_times;
-                }
-                if item.fuzz_times < min_round {
-                    min_round = item.fuzz_times;
-                }
-            }
-            if p.0 < min_priority {
-                min_priority = p.0;
+        for (item, _) in q.iter() {
+            if item.fuzz_times > max_round {
+                max_round = item.fuzz_times;
             }
             self.fuzz.count(&item);
             if item.base.is_explore() {
@@ -100,9 +84,7 @@ impl ChartStats {
                 self.state.count(&item);
             }
         }
-        self.min_p = (min_priority as usize).into();
         self.max_rounds = max_round.into();
-        self.min_rounds = min_round.into();
     }
 
     fn sync_from_branches(&mut self, gb: &Arc<GlobalBranches>) {
@@ -163,9 +145,9 @@ impl fmt::Display for ChartStats {
 {}
     TIMING |     RUN: {},   TRACK: {}
   COVERAGE |    EDGE: {},   DENSITY: {}%
-    EXECS  |   TOTAL: {},     ROUND: {}  MIN/MAX_R: {}/{}  MIN_P: {}
+    EXECS  |   TOTAL: {},     ROUND: {},     MAX_R: {}
     SPEED  |  PERIOD: {:6}r/s    TIME: {}us, 
-    FOUND  |  NORMAL: {},     HANGS: {},   CRASHES: {}
+    FOUND  |    PATH: {},     HANGS: {},   CRASHES: {}
 {}
 {}
 {}
@@ -182,9 +164,7 @@ impl fmt::Display for ChartStats {
             self.density,
             self.num_exec,
             self.num_rounds,
-            self.min_rounds,
             self.max_rounds,
-            self.min_p,
             self.speed,
             self.avg_exec_time,
             self.num_inputs,

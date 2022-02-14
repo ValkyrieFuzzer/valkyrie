@@ -1,4 +1,5 @@
-use super::{filter, load_pin_data::get_log_data_pin};
+use super::filter;
+use super::load_pin_data::get_log_data_pin;
 use crate::{
     cond_stmt::{CondState, CondStmt},
     mut_input,
@@ -85,7 +86,7 @@ pub fn load_track_data(
         Result::Err(err) => {
             error!("parse track file error!! {:?}", err);
             vec![]
-        },
+        }
     };
 
     for cond in cond_list.iter_mut() {

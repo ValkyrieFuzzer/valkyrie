@@ -23,12 +23,6 @@ fun:__angora_trace_exploit_addr=custom
 fun:__angora_trace_exploit_addr=uninstrumented
 fun:__angora_trace_exploit_val_tt=custom
 fun:__angora_trace_exploit_val_tt=uninstrumented
-fun:__angora_trace_exploit_div_tt=custom
-fun:__angora_trace_exploit_div_tt=uninstrumented
-fun:__angora_trace_exploit_intflow_tt=custom
-fun:__angora_trace_exploit_intflow_tt=uninstrumented
-fun:__angora_trace_exploit_mem_arg_tt=custom
-fun:__angora_trace_exploit_mem_arg_tt=uninstrumented
 fun:__angora_trace_exploit_val_pin=uninstrumented
 fun:__angora_trace_exploit_val=uninstrumented
 fun:__angora_update_tid=uninstrumented
@@ -226,16 +220,3 @@ fun:getrandom=discard
 
 fun:fcntl64=uninstrumented
 fun:fcntl64=discard
-fun:explicit_bzero=uninstrumented
-fun:explicit_bzero=discard
-
-fun:lseek64=discard
-fun:pread64=custom
-
-fun:atoi=custom
-fun:atol=custom
-fun:atoll=custom
-fun:atof=custom
-
-fun:pthread_rwlock_rdlock=discard
-fun:__pthread_rwlock_rdlock=discard

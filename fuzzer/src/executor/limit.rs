@@ -8,8 +8,8 @@ pub trait SetLimit {
     fn mem_limit(&mut self, size: u64) -> &mut Self;
     fn setsid(&mut self) -> &mut Self;
     fn pipe_stdin(&mut self, fd: RawFd, is_stdin: bool) -> &mut Self;
-    // fn dup2(&mut self, src: libc::c_int, dst: libc::c_int) -> &mut Self;
-    // fn close_fd(&mut self, fd: libc::c_int) -> &mut Self;
+    //fn dup2(&mut self, src: libc::c_int, dst: libc::c_int) -> &mut Self;
+    //fn close_fd(&mut self, fd: libc::c_int) -> &mut Self;
 }
 
 impl SetLimit for Command {

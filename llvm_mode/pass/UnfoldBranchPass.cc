@@ -8,6 +8,9 @@
   }
  */
 
+#include "debug.h"
+#include "./version.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -23,28 +26,19 @@
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Transforms/IPO/PassManagerBuilder.h"
-
-// Angora
-#include "./debug.h"
-#include "./util.h"
-#include "./version.h"
-#include "CtorDtorFuncs.hpp"
-
 using namespace llvm;
 
 namespace {
 
 class UnfoldBranch : public FunctionPass {
- private:
+private:
   Type *VoidTy;
   IntegerType *Int8Ty;
   IntegerType *Int32Ty;
 
-  CtorDtorFuncs *CDF;
+  Constant *UnfoldBranchFn;
 
-  FunctionCallee UnfoldBranchFn;
-
- public:
+public:
   static char ID;
 
   UnfoldBranch() : FunctionPass(ID) {}
@@ -54,12 +48,12 @@ class UnfoldBranch : public FunctionPass {
   bool runOnFunction(Function &F) override;
 };
 
-}  // namespace
+} // namespace
 
 char UnfoldBranch::ID = 0;
 
 bool UnfoldBranch::doInitialization(Module &M) {
-  CDF = new CtorDtorFuncs(M);
+
   LLVMContext &C = M.getContext();
 
   Int8Ty = IntegerType::getInt8Ty(C);
@@ -68,19 +62,23 @@ bool UnfoldBranch::doInitialization(Module &M) {
 
   srandom(1851655);
 
-  GET_OR_INSERT_FUNCTION(UnfoldBranchFn, VoidTy, "__unfold_branch_fn",
-                         {Int32Ty})
+  Type *FnArgs[1] = {Int32Ty};
+  FunctionType *FnTy = FunctionType::get(VoidTy, FnArgs, /*isVarArg=*/false);
+  UnfoldBranchFn = M.getOrInsertFunction("__unfold_branch_fn", FnTy);
+
+  if (Function *F = dyn_cast<Function>(UnfoldBranchFn)) {
+    F->addAttribute(LLVM_ATTRIBUTE_LIST::FunctionIndex, Attribute::NoUnwind);
+  }
   return true;
 }
 
-bool UnfoldBranch::doFinalization(Module &M) {
-  delete CDF;
-  return true;
-}
+bool UnfoldBranch::doFinalization(Module &M) { return true; }
 
 bool UnfoldBranch::runOnFunction(Function &F) {
+
   // if the function is declaration, ignore
-  if (F.isDeclaration() || CDF->isCtorDtor(F)) return false;
+  if (F.isDeclaration())
+    return false;
 
 #ifndef ENABLE_UNFOLD_BRANCH
   return false;
@@ -89,14 +87,18 @@ bool UnfoldBranch::runOnFunction(Function &F) {
   SmallSet<BasicBlock *, 20> VisitedBB;
   LLVMContext &C = F.getContext();
   for (auto &BB : F) {
+
     Instruction *Inst = BB.getTerminator();
     if (isa<BranchInst>(Inst)) {
+
       BranchInst *BI = dyn_cast<BranchInst>(Inst);
 
-      if (BI->isUnconditional() || BI->getNumSuccessors() < 2) continue;
+      if (BI->isUnconditional() || BI->getNumSuccessors() < 2)
+        continue;
 
       Value *Cond = BI->getCondition();
-      if (!Cond) continue;
+      if (!Cond)
+        continue;
 
       for (unsigned int i = 0; i < BI->getNumSuccessors(); i++) {
         BasicBlock *B0 = BI->getSuccessor(i);
@@ -118,13 +120,15 @@ bool UnfoldBranch::runOnFunction(Function &F) {
 
 static void registerUnfoldBranchPass(const PassManagerBuilder &,
                                      legacy::PassManagerBase &PM) {
+
   PM.add(new UnfoldBranch());
 }
 
 static RegisterPass<UnfoldBranch> X("unfold_branch_pass", "Unfold Branch Pass");
 
-static RegisterStandardPasses RegisterUnfoldBranchPass(
-    PassManagerBuilder::EP_EarlyAsPossible, registerUnfoldBranchPass);
+static RegisterStandardPasses
+    RegisterAFLPass(PassManagerBuilder::EP_EarlyAsPossible,
+                    registerUnfoldBranchPass);
 
 /*
 static RegisterStandardPasses RegisterAFLPass0(

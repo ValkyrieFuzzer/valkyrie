@@ -29,7 +29,6 @@ pub static FORKSRV_SOCKET_PATH_VAR: &str = "ANGORA_FORKSRV_SOCKET_PATH";
 pub static ANGORA_DIR_NAME: &str = "angora";
 pub static ANGORA_LOG_FILE: &str = "angora.log";
 pub static COND_QUEUE_FILE: &str = "cond_queue.csv";
-pub static CONFIG_FILE: &str = "config.txt";
 pub static CHART_STAT_FILE: &str = "chart_stat.json";
 
 // tmpfs.rs
@@ -43,37 +42,37 @@ pub const UNREACHABLE: i128 = std::i128::MAX;
 // http://llvm.org/doxygen/InstrTypes_8h_source.html
 // Opcode              U L G E    Intuitive operation
 pub const COND_FCMP_FALSE: u32 = 0;
-/// < 0 0 0 0    Always false (always folded)
+///< 0 0 0 0    Always false (always folded)
 pub const COND_FCMP_OEQ: u32 = 1;
-/// < 0 0 0 1    True if ordered and equal
+///< 0 0 0 1    True if ordered and equal
 pub const COND_FCMP_OGT: u32 = 2;
-/// < 0 0 1 0    True if ordered and greater than
+///< 0 0 1 0    True if ordered and greater than
 pub const COND_FCMP_OGE: u32 = 3;
-/// < 0 0 1 1    True if ordered and greater than or equal
+///< 0 0 1 1    True if ordered and greater than or equal
 pub const COND_FCMP_OLT: u32 = 4;
-/// < 0 1 0 0    True if ordered and less than
+///< 0 1 0 0    True if ordered and less than
 pub const COND_FCMP_OLE: u32 = 5;
-/// < 0 1 0 1    True if ordered and less than or equal
+///< 0 1 0 1    True if ordered and less than or equal
 pub const COND_FCMP_ONE: u32 = 6;
-/// < 0 1 1 0    True if ordered and operands are unequal
+///< 0 1 1 0    True if ordered and operands are unequal
 pub const COND_FCMP_ORD: u32 = 7;
-/// < 0 1 1 1    True if ordered (no nans)
+///< 0 1 1 1    True if ordered (no nans)
 pub const COND_FCMP_UNO: u32 = 8;
-/// < 1 0 0 0    True if unordered: isnan(X) | isnan(Y)
+///< 1 0 0 0    True if unordered: isnan(X) | isnan(Y)
 pub const COND_FCMP_UEQ: u32 = 9;
-/// < 1 0 0 1    True if unordered or equal
+///< 1 0 0 1    True if unordered or equal
 pub const COND_FCMP_UGT: u32 = 10;
-/// < 1 0 1 0    True if unordered or greater than
+///< 1 0 1 0    True if unordered or greater than
 pub const COND_FCMP_UGE: u32 = 11;
-/// < 1 0 1 1    True if unordered; greater than; or equal
+///< 1 0 1 1    True if unordered; greater than; or equal
 pub const COND_FCMP_ULT: u32 = 12;
-/// < 1 1 0 0    True if unordered or less than
+///< 1 1 0 0    True if unordered or less than
 pub const COND_FCMP_ULE: u32 = 13;
-/// < 1 1 0 1    True if unordered; less than; or equal
+///< 1 1 0 1    True if unordered; less than; or equal
 pub const COND_FCMP_UNE: u32 = 14;
-/// < 1 1 1 0    True if unordered or not equal
+///< 1 1 1 0    True if unordered or not equal
 pub const COND_FCMP_TRUE: u32 = 15;
-/// < 1 1 1 1    Always true (always folded)
+///< 1 1 1 1    Always true (always folded)
 
 pub const COND_ICMP_EQ_OP: u32 = 32;
 pub const COND_ICMP_NE_OP: u32 = 33;
@@ -90,13 +89,12 @@ pub const COND_SW_OP: u32 = 0x00FF;
 pub const COND_BASIC_MASK: u32 = 0xFF;
 pub const COND_SIGN_MASK: u32 = 0x100;
 pub const COND_BOOL_MASK: u32 = 0x200;
-pub const COND_EXPLOIT_MASK: u32 = 0x3000;
-pub const COND_EXPLOIT_INT_MASK: u32 = 0x1000;
-pub const COND_EXPLOIT_MEM_MASK: u32 = 0x2000;
-pub const COND_EXPLOIT_RAND_MASK: u32 = 0x3000;
+// pub const COND_CALL_MASK: u32 = 0x400;
 // pub const COND_CALL_REV_MASK: u32 = 0xFBFF;
 
-pub const COND_SPECIAL_MASK: u32 = 0x8000;
+pub const COND_MAX_EXPLORE_OP: u32 = 0x4000 - 1;
+pub const COND_MAX_EXPLOIT_OP: u32 = 0x5000 - 1;
+
 pub const COND_AFL_OP: u32 = 0x8001;
 // sensititve offsets
 pub const COND_FN_OP: u32 = 0x8002;

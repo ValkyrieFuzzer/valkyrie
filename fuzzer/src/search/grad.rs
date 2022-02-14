@@ -1,5 +1,3 @@
-#![allow(dead_code)]
-
 use angora_common::config;
 use std::{
     fmt,
@@ -81,7 +79,7 @@ impl Deref for Grad {
 }
 
 impl DerefMut for Grad {
-    // type Target = Vec<GradUnit>;
+    //type Target = Vec<GradUnit>;
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
     }

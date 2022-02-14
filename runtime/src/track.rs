@@ -56,7 +56,7 @@ pub extern "C" fn __dfsw___angora_trace_cmp_tt(
     l5: DfsanLabel,
     _l6: DfsanLabel,
 ) {
-    // println!("[CMP] id: {}, ctx: {}", cmpid, context);
+    //println!("[CMP] id: {}, ctx: {}", cmpid, get_context());
     // ret_label: *mut DfsanLabel
     let lb1 = l4;
     let lb2 = l5;
@@ -78,10 +78,11 @@ pub extern "C" fn __angora_trace_switch_tt(
     _c: u32,
     _d: u64,
     _e: u32,
-    _f: *mut u64,
+    _f: *mut u64
 ) {
     panic!("Forbid calling __angora_trace_switch_tt directly");
 }
+
 
 #[no_mangle]
 pub extern "C" fn __dfsw___angora_trace_switch_tt(
@@ -142,7 +143,13 @@ pub extern "C" fn __dfsw___angora_trace_switch_tt(
 }
 
 #[no_mangle]
-pub extern "C" fn __angora_trace_fn_tt(_a: u32, _b: u32, _c: usize, _d: *mut i8, _e: *mut i8) {
+pub extern "C" fn __angora_trace_fn_tt(
+    _a: u32,
+    _b: u32,
+    _c: u32,
+    _d: *mut i8,
+    _e: *mut i8
+) {
     panic!("Forbid calling __angora_trace_fn_tt directly");
 }
 
@@ -150,7 +157,7 @@ pub extern "C" fn __angora_trace_fn_tt(_a: u32, _b: u32, _c: usize, _d: *mut i8,
 pub extern "C" fn __dfsw___angora_trace_fn_tt(
     cmpid: u32,
     context: u32,
-    size: usize,
+    size: u32,
     parg1: *mut i8,
     parg2: *mut i8,
     _l0: DfsanLabel,
@@ -162,7 +169,7 @@ pub extern "C" fn __dfsw___angora_trace_fn_tt(
     let (arglen1, arglen2) = if size == 0 {
         unsafe { (libc::strlen(parg1) as usize, libc::strlen(parg2) as usize) }
     } else {
-        (size, size)
+        (size as usize, size as usize)
     };
 
     let lb1 = unsafe { dfsan_read_label(parg1, arglen1) };
@@ -205,7 +212,13 @@ pub extern "C" fn __dfsw___angora_trace_fn_tt(
 }
 
 #[no_mangle]
-pub extern "C" fn __angora_trace_exploit_val_tt(_a: u32, _b: u32, _c: u32, _d: u32, _e: u64) {
+pub extern "C" fn __angora_trace_exploit_val_tt(
+    _a: u32,
+    _b: u32,
+    _c: u32,
+    _d: u32,
+    _e: u64
+) {
     panic!("Forbid calling __angora_trace_exploit_val_tt directly");
 }
 
@@ -229,208 +242,7 @@ pub extern "C" fn __dfsw___angora_trace_exploit_val_tt(
 
     log_cmp(cmpid, context, defs::COND_FALSE_ST, op, size, lb, 0, val, 0);
 }
-/// To exploit div operations, we force divident to be zero.
-#[no_mangle]
-pub extern "C" fn __dfsw___angora_trace_exploit_div_tt(
-    cmpid: u32,
-    // fn_id: u32,
-    context: u32,
-    size: u32,
-    dividend: u64,
-    _l0: DfsanLabel,
-    // _lfn_id: DfsanLabel,
-    _l1: DfsanLabel,
-    _l2: DfsanLabel,
-    l3: DfsanLabel,
-) {
-    if l3 == 0 {
-        return;
-    }
-    let op = defs::COND_EXPLOIT_INT_MASK | defs::COND_ICMP_EQ_OP;
-    log_cmp(
-        cmpid | (1 << 28),
-        // fn_id,
-        context,
-        defs::COND_FALSE_ST,
-        op,
-        size,
-        l3,
-        0,
-        dividend,
-        0,
-    );
-    let upper = if size < 8 {
-        (1 << (8 * size)) - 1
-    } else {
-        0xffff_ffff
-    };
-    log_cmp(
-        cmpid | (2 << 28),
-        // fn_id,
-        context,
-        defs::COND_FALSE_ST,
-        op,
-        size,
-        l3,
-        0,
-        (dividend - 1) & 0xffff_ffff,
-        upper,
-    );
-}
 
-#[no_mangle]
-pub extern "C" fn __angora_trace_exploit_intflow_tt(
-    _cmpid: u32,
-    // _fn_id: u32,
-    _context: u32,
-    _size: u32,
-    _s_result: i64,
-    _u_result: u64,
-) {
-    panic!("Cannot call directly!");
-}
-
-#[no_mangle]
-pub extern "C" fn __dfsw___angora_trace_exploit_intflow_tt(
-    cmpid: u32,
-    // fn_id: u32,
-    context: u32,
-    size: u32,
-    s_result: i64,
-    u_result: u64,
-    // _lfn_id: DfsanLabel,
-    _l0: DfsanLabel,
-    _l1: DfsanLabel,
-    _l2: DfsanLabel,
-    s_taint: DfsanLabel,
-    u_taint: DfsanLabel,
-) {
-    let bit_size = if size == 8 { 32 } else { size * 8 };
-    // U<bit_size>::MAX
-    let upper = (1 << bit_size) - 1;
-    log_cmp(
-        cmpid | (1 << 28),
-        // fn_id,
-        context,
-        defs::COND_FALSE_ST,
-        defs::COND_EXPLOIT_INT_MASK | defs::COND_ICMP_UGT_OP,
-        size,
-        u_taint,
-        0,
-        u_result,
-        upper,
-    );
-    // U<bit_size>::MIN, i.e. 0
-    let lower = 0;
-    log_cmp(
-        cmpid | (2 << 28),
-        // fn_id,
-        context,
-        defs::COND_FALSE_ST,
-        defs::COND_EXPLOIT_INT_MASK | defs::COND_ICMP_ULT_OP,
-        size,
-        u_taint,
-        0,
-        u_result,
-        lower,
-    );
-    // I<bit_size>::MAX
-    let upper = (1 << (bit_size - 1)) - 1;
-    log_cmp(
-        cmpid | (3 << 28),
-        // fn_id,
-        context,
-        defs::COND_FALSE_ST,
-        defs::COND_EXPLOIT_INT_MASK | defs::COND_ICMP_SGT_OP,
-        size,
-        s_taint,
-        0,
-        s_result as u64,
-        upper as u64,
-    );
-    // I<bit_size>::MIN
-    let lower = 0xffff_ffff_ffff_ffff << (bit_size - 1) as u64;
-    log_cmp(
-        cmpid | (4 << 28),
-        // fn_id,
-        context,
-        defs::COND_FALSE_ST,
-        defs::COND_EXPLOIT_INT_MASK | defs::COND_ICMP_SLT_OP,
-        size,
-        s_taint,
-        0,
-        s_result as u64,
-        lower,
-    );
-}
-
-#[no_mangle]
-pub extern "C" fn __angora_trace_exploit_mem_arg_tt(
-    _cmpid: u32,
-    _expid: u32,
-    // _fn_id: u32,
-    _context: u32,
-    _size: u32,
-    _arg: u64,
-) {
-    panic!("Cannot call this directly!");
-}
-
-#[no_mangle]
-pub extern "C" fn __dfsw___angora_trace_exploit_mem_arg_tt(
-    cmpid: u32,
-    mut expid: u32,
-    // fn_id: u32,
-    context: u32,
-    size: u32,
-    arg: u64,
-    _lexp_id: DfsanLabel,
-    // _lfn_id: DfsanLabel,
-    _l0: DfsanLabel,
-    _l1: DfsanLabel,
-    _l2: DfsanLabel,
-    l3: DfsanLabel,
-) {
-    if l3 == 0 {
-        return;
-    }
-    // arg > 0xffffffff
-    let upper = if size < 8 {
-        (1 << size) - 1
-    } else {
-        std::u32::MAX as u64 - 1
-    };
-    expid |= 0b0000;
-    let op_upper = defs::COND_EXPLOIT_MEM_MASK | defs::COND_ICMP_UGT_OP;
-    log_cmp(
-        cmpid | (expid << 28),
-        // fn_id,
-        context,
-        defs::COND_FALSE_ST,
-        op_upper,
-        size,
-        l3,
-        0,
-        arg,
-        upper,
-    );
-    // arg < 0
-    let lower = 0;
-    expid |= 0b1000;
-    let op_lower = defs::COND_EXPLOIT_MEM_MASK | defs::COND_ICMP_SLT_OP;
-    log_cmp(
-        cmpid | (expid << 28),
-        // fn_id,
-        context,
-        defs::COND_FALSE_ST,
-        op_lower,
-        size,
-        l3,
-        0,
-        arg,
-        lower,
-    );
-}
 #[inline]
 fn log_cmp(
     cmpid: u32,

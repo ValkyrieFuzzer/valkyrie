@@ -43,7 +43,7 @@ impl Depot {
     ) -> usize {
         let id = num.fetch_add(1, Ordering::Relaxed);
         trace!(
-            "Find {} th new {:?} input by fuzzing cmpid 0x{:08x}.",
+            "Find {} th new {:?} input by fuzzing {}.",
             id,
             status,
             cmpid
@@ -117,30 +117,28 @@ impl Depot {
         };
 
         for mut cond in conds {
-            if !cond.is_desirable {
-                continue;
-            }
-            if let Some(v) = q.get_mut(&cond) {
-                if v.0.is_done() {
-                    continue;
-                }
-                // If existed one and our new one has two different conditions,
-                // this indicate that it is explored.
-                if v.0.base.condition != cond.base.condition {
-                    v.0.mark_as_done();
-                    q.change_priority(&cond, QPriority::done());
-                } else {
-                    // Existed, but the new one are better
-                    // If the cond is faster than the older one, we prefer the faster,
-                    if config::PREFER_FAST_COND && v.0.speed > cond.speed {
-                        mem::swap(v.0, &mut cond);
-                        let priority = QPriority::init(cond.base.op);
-                        q.change_priority(&cond, priority);
+            if cond.is_desirable {
+                if let Some(v) = q.get_mut(&cond) {
+                    if !v.0.is_done() {
+                        // If existed one and our new one has two different conditions,
+                        // this indicate that it is explored.
+                        if v.0.base.condition != cond.base.condition {
+                            v.0.mark_as_done();
+                            q.change_priority(&cond, QPriority::done());
+                        } else {
+                            // Existed, but the new one are better
+                            // If the cond is faster than the older one, we prefer the faster,
+                            if config::PREFER_FAST_COND && v.0.speed > cond.speed {
+                                mem::swap(v.0, &mut cond);
+                                let priority = QPriority::init(cond.base.op);
+                                q.change_priority(&cond, priority);
+                            }
+                        }
                     }
+                } else {
+                    let priority = QPriority::init(cond.base.op);
+                    q.push(cond, priority);
                 }
-            } else {
-                let priority = QPriority::init(cond.base.op);
-                q.push(cond, priority);
             }
         }
     }

@@ -79,41 +79,25 @@ fn filter_eof(cond: &CondStmt) -> bool {
 }
 
 pub fn filter_cond_list(cond_list: &mut Vec<CondStmt>) {
-    // mark conds we don't use in future to be undesirable
+    // mark conds we don;t use in future to be undesirable
     // those undesirable ones won't be added to depot in `depot.rs`
     let mut exploitable_labels = HashSet::new();
     let mut unique_conds = HashSet::new();
     let mut dedup_exploit = 0;
     let mut dedup_explore = 0;
 
-    let mut exp_cond_vec = vec![];
-    for cond in cond_list.iter_mut() {
+    for cond in cond_list {
         if has_no_taint(cond) || exceed_max_order(cond) || size_not_match(cond) || filter_eof(cond)
         {
             cond.is_desirable = false;
-        } else
-        // The exploit-able conds added by us is not skipped.
-        if cond.base.is_exploit_int() || cond.base.is_exploit_mem() {
-            // de-dup exploit conds.
-            // If conds have different context || order but the same cmpid && args && labels --> they are the same
-            let condargs = CondArgs::from(&cond.base);
-            if unique_conds.contains(&condargs) {
+        } else if cond.base.is_exploitable() {
+            // We try to (maximize or random mutate) the values in the exploitable offsets.
+            // So we can simply de-dup them by their taint labels.
+            if exploitable_labels.contains(&cond.base.lb1) {
                 cond.is_desirable = false;
                 dedup_exploit += 1;
             } else {
-                unique_conds.insert(condargs);
-            }
-
-            // Also do random exploitation.
-            // We try to (maximize or random mutate) the values in the exploitable offsets.
-            // So we can simply de-dup them by their taint labels.
-            if !exploitable_labels.contains(&cond.base.lb1) {
                 exploitable_labels.insert(cond.base.lb1);
-                let mut exp_cond = cond.clone();
-                exp_cond.base.cmpid |= 0xf0000000;
-                exp_cond.base.op |= defs::COND_EXPLOIT_MASK;
-                exp_cond.base.context |= 0;
-                exp_cond_vec.push(exp_cond);
             }
         } else if cond.base.is_explore() || cond.base.op == defs::COND_LEN_OP {
             // de-dup explore conds. including len ops.
@@ -127,11 +111,9 @@ pub fn filter_cond_list(cond_list: &mut Vec<CondStmt>) {
             }
         }
     }
-    cond_list.extend(exp_cond_vec);
 
-    trace!(
+    debug!(
         "de-dup exploit: {}, explore: {}",
-        dedup_exploit,
-        dedup_explore
+        dedup_exploit, dedup_explore
     );
 }

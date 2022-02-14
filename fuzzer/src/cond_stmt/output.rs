@@ -2,7 +2,7 @@
 get the output(objective) of the conds.
 */
 
-use angora_common::{cond_stmt_base::CondStmtBase, debug_cmpid, defs};
+use angora_common::{cond_stmt_base::CondStmtBase, defs};
 use std;
 
 const EPS: i128 = 1;
@@ -71,7 +71,7 @@ impl CondOutput for CondStmtBase {
             defs::COND_ICMP_EQ_OP => {
                 // a == b : f = a - b
                 a - b
-            },
+            }
             defs::COND_ICMP_NE_OP => {
                 // a != b :
                 // f = 0 if a != b, and f = 1 if a == b
@@ -80,42 +80,29 @@ impl CondOutput for CondStmtBase {
                 } else {
                     0
                 }
-            },
+            }
             defs::COND_ICMP_SGT_OP | defs::COND_ICMP_UGT_OP => {
                 // a > b :
                 b - a + EPS
-            },
+            }
             defs::COND_ICMP_UGE_OP | defs::COND_ICMP_SGE_OP => {
                 // a > = b
                 b - a
-            },
+            }
             defs::COND_ICMP_ULT_OP | defs::COND_ICMP_SLT_OP => {
                 // a < b :
                 a - b + EPS
-            },
+            }
             defs::COND_ICMP_ULE_OP | defs::COND_ICMP_SLE_OP => {
                 // a < = b
                 a - b
-            },
+            }
             _ => {
                 //TODO : support float.
                 // if self.is_float() {
                 a - b
-            },
+            }
         };
-
-        debug_cmpid!(
-            self.cmpid,
-            "id: 0x{:08x}, op: {} -> {}, size:{}, condition: {}, arg(0x{:x} 0x{:x}), output: {}",
-            self.cmpid,
-            self.op,
-            op,
-            self.size,
-            self.condition,
-            a,
-            b,
-            output
-        );
 
         output
     }
@@ -150,7 +137,7 @@ fn translate_signed_value(v: u64, size: u32) -> u64 {
                 // [0, 127] -> [128, 255]
                 v + (std::i8::MAX as u64 + 1)
             }
-        },
+        }
 
         2 => {
             let mut s = v as i16;
@@ -161,7 +148,7 @@ fn translate_signed_value(v: u64, size: u32) -> u64 {
             } else {
                 v + (std::i16::MAX as u64 + 1)
             }
-        },
+        }
 
         4 => {
             let mut s = v as i32;
@@ -172,7 +159,7 @@ fn translate_signed_value(v: u64, size: u32) -> u64 {
             } else {
                 v + (std::i32::MAX as u64 + 1)
             }
-        },
+        }
 
         8 => {
             let mut s = v as i64;
@@ -183,7 +170,7 @@ fn translate_signed_value(v: u64, size: u32) -> u64 {
             } else {
                 v + (std::i64::MAX as u64 + 1)
             }
-        },
+        }
 
         _ => v,
     }

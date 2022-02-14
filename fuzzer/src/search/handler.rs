@@ -1,6 +1,5 @@
 use super::*;
 use crate::stats::Counter;
-use angora_common::debug_cmpid;
 
 /// Execution monitor
 pub struct SearchHandler<'a> {
@@ -40,8 +39,8 @@ impl<'a> SearchHandler<'a> {
         match status {
             StatusType::Skip => {
                 self.skip = true;
-            },
-            _ => {},
+            }
+            _ => {}
         }
 
         // bonus
@@ -88,11 +87,7 @@ impl<'a> SearchHandler<'a> {
     }
 
     pub fn get_f_input(&self) -> MutInput {
-        debug_cmpid!(
-            self.cond.base.cmpid,
-            "input offset: {:?}",
-            self.cond.offsets
-        );
+        debug!("input offset: {:?}", self.cond.offsets);
         MutInput::from(&self.cond.offsets, &self.buf)
     }
 }

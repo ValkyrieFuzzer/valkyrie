@@ -1,12 +1,6 @@
-use crate::{
-    bind_cpu, branches, check_dep, command, depot, executor, fuzz_loop,
-    stats::{self, *},
-};
-use angora_common::{config::FuzzerConfig, defs};
+use crate::stats::*;
+use angora_common::defs;
 use chrono::prelude::Local;
-use ctrlc;
-use libc;
-use pretty_env_logger;
 use std::{
     collections::HashMap,
     fs,
@@ -19,33 +13,38 @@ use std::{
     thread, time,
 };
 
+use crate::{bind_cpu, branches, check_dep, command, depot, executor, fuzz_loop, stats};
+use ctrlc;
+use libc;
+use pretty_env_logger;
+
 pub fn fuzz_main(
     mode: &str,
     in_dir: &str,
     out_dir: &str,
     track_target: &str,
-    san_target: &str,
     pargs: Vec<String>,
-    bind: Option<usize>,
     num_jobs: usize,
     mem_limit: u64,
     time_limit: u64,
     search_method: &str,
     sync_afl: bool,
+    enable_afl: bool,
+    enable_exploitation: bool,
 ) {
     pretty_env_logger::init();
 
-    warn!("Running with config: \n{:#?}", FuzzerConfig::get());
     let (seeds_dir, angora_out_dir) = initialize_directories(in_dir, out_dir, sync_afl);
     let command_option = command::CommandOpt::new(
         mode,
         track_target,
-        san_target,
         pargs,
         &angora_out_dir,
         search_method,
         mem_limit,
         time_limit,
+        enable_afl,
+        enable_exploitation,
     );
     info!("{:?}", command_option);
 
@@ -80,7 +79,6 @@ pub fn fuzz_main(
     }
 
     let (handles, child_count) = init_cpus_and_run_fuzzing_threads(
-        bind,
         num_jobs,
         &running,
         &command_option,
@@ -94,7 +92,7 @@ pub fn fuzz_main(
         Err(e) => {
             error!("FATAL: Could not create log file: {:?}", e);
             panic!();
-        },
+        }
     };
     main_thread_sync_and_log(
         log_file,
@@ -118,7 +116,6 @@ pub fn fuzz_main(
         Ok(_) => (),
         Err(e) => warn!("Could not remove fuzzer stats file: {:?}", e),
     };
-    warn!("Double check your config: \n{:#?}", FuzzerConfig::get());
 }
 
 fn initialize_directories(in_dir: &str, out_dir: &str, sync_afl: bool) -> (PathBuf, PathBuf) {
@@ -172,14 +169,13 @@ fn create_stats_file_and_write_pid(angora_out_dir: &PathBuf) -> PathBuf {
         Err(e) => {
             error!("Could not create stats file: {:?}", e);
             panic!();
-        },
+        }
     };
     write!(buffer, "fuzzer_pid : {}", pid).expect("Could not write to stats file");
     fuzzer_stats
 }
 
 fn init_cpus_and_run_fuzzing_threads(
-    bind: Option<usize>,
     num_jobs: usize,
     running: &Arc<AtomicBool>,
     command_option: &command::CommandOpt,
@@ -189,16 +185,10 @@ fn init_cpus_and_run_fuzzing_threads(
 ) -> (Vec<thread::JoinHandle<()>>, Arc<AtomicUsize>) {
     let child_count = Arc::new(AtomicUsize::new(0));
     let mut handlers = vec![];
-    let free_cpus = match bind {
-        None => bind_cpu::find_free_cpus(num_jobs),
-        Some(start_cid) => {
-            let max_num = num_cpus::get();
-            (start_cid..max_num).collect()
-        },
-    };
+    let free_cpus = bind_cpu::find_free_cpus(num_jobs);
     let free_cpus_len = free_cpus.len();
     let bind_cpus = if free_cpus_len < num_jobs {
-        warn!("The number of free cpus({}) is less than the number of jobs({}). Will not bind any thread to any cpu.", free_cpus_len, num_jobs);
+        warn!("The number of free cpus is less than the number of jobs. Will not bind any thread to any cpu.");
         false
     } else {
         true
@@ -243,11 +233,7 @@ fn main_thread_sync_and_log(
     let mut sync_counter = 1;
     show_stats(&mut log_file, depot, global_branches, stats);
     while running.load(Ordering::SeqCst) {
-        if cfg!(debug_assertions) {
-            thread::sleep(time::Duration::from_secs(1));
-        } else {
-            thread::sleep(time::Duration::from_secs(5));
-        }
+        thread::sleep(time::Duration::from_secs(5));
         sync_counter -= 1;
         if sync_afl && sync_counter <= 0 {
             depot::sync_afl(executor, running.clone(), sync_dir, &mut synced_ids);

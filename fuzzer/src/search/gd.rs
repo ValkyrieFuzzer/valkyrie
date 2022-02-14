@@ -1,10 +1,9 @@
-#![allow(dead_code)]
-
 /*
 Gradient descend search
 */
 
 use super::*;
+use angora_common::defs;
 use std;
 
 pub struct GdSearch<'a> {
@@ -109,7 +108,7 @@ impl<'a> GdSearch<'a> {
             ep_i += 1;
         }
 
-        if (self.handler.executor.last_f as u64) < std::u64::MAX {
+        if self.handler.executor.last_f < defs::UNREACHABLE {
             self.handler.cond.variables = input.get_value();
         }
     }
@@ -232,7 +231,7 @@ impl<'a> GdSearch<'a> {
                 } else {
                     (true, false, f0 - f_plus)
                 }
-            },
+            }
         }
     }
 

@@ -1,6 +1,6 @@
 use super::CondState;
-use crate::{cond_stmt::CondOutput, fuzz_type::FuzzType};
-use angora_common::{cond_stmt_base::CondStmtBase, config::FuzzerConfig, defs, tag::TagSeg};
+use crate::fuzz_type::FuzzType;
+use angora_common::{cond_stmt_base::CondStmtBase, defs, tag::TagSeg};
 use serde_derive::{Deserialize, Serialize};
 use std::hash::{Hash, Hasher};
 
@@ -23,14 +23,7 @@ pub struct CondStmt {
 
 impl PartialEq for CondStmt {
     fn eq(&self, other: &CondStmt) -> bool {
-        if FuzzerConfig::get().belong() && self.base.belong != other.base.belong {
-            false
-        } else if FuzzerConfig::get().order() && self.base.order != other.base.order {
-            false
-        } else {
-            self.base.cmpid == other.base.cmpid && self.base.context == other.base.context
-        }
-        // self.base == other.base
+        self.base == other.base
     }
 }
 
@@ -38,19 +31,14 @@ impl Eq for CondStmt {}
 
 impl Hash for CondStmt {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        if FuzzerConfig::get().belong() {
-            self.base.belong.hash(state);
-        } else if FuzzerConfig::get().order() {
-            self.base.order.hash(state);
-        } else {
-            self.base.cmpid.hash(state);
-            self.base.context.hash(state);
-        }
+        self.base.cmpid.hash(state);
+        self.base.context.hash(state);
+        self.base.order.hash(state);
     }
 }
 
 impl CondStmt {
-    fn new() -> Self {
+    pub fn new() -> Self {
         let cond_base = Default::default();
         Self {
             base: cond_base,
@@ -82,16 +70,12 @@ impl CondStmt {
             _ => {
                 if self.base.is_explore() {
                     FuzzType::ExploreFuzz
-                } else if self.base.is_exploit_int() {
-                    FuzzType::ExploitIntFuzz
-                } else if self.base.is_exploit_mem() {
-                    FuzzType::ExploitMemFuzz
-                } else if self.base.is_exploit_rand() {
-                    FuzzType::ExploitRandFuzz
+                } else if self.base.is_exploitable() {
+                    FuzzType::ExploitFuzz
                 } else {
                     FuzzType::OtherFuzz
                 }
-            },
+            }
         }
     }
 

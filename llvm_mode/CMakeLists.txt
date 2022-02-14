@@ -6,9 +6,6 @@ include_directories(include)
 include_directories(dfsan_rt)
 include_directories(../runtime/include)
 
-# Comment this line to use LTO.
-# add_compile_definitions(LTO)
-
 set(ANGORA_BIN_DIR ".")
 set(ANGORA_LIB_DIR "lib")
 set(ANGORA_RULE_DIR "rules")

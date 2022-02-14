@@ -2,9 +2,9 @@
 // only for :
 // inputs directory and .cur_input, .socket file
 
-use angora_common::defs;
 use libc;
-use std::{env, fs, os::unix::fs::symlink, path::Path};
+use std::{fs, os::unix::fs::symlink, path::Path, env};
+use angora_common::defs;
 
 static LINUX_TMPFS_DIR: &str = "/dev/shm";
 

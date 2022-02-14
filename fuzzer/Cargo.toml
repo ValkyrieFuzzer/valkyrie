@@ -24,12 +24,9 @@ colored = "2.0"
 serde="1.0"
 serde_derive = "1.0"
 serde_json = "1.0"
-lazy_static = "1.1"
+# lazy_static = "1.1"
 memmap = "0.7.0"
 twoway = "0.2.0"
-sha2 = "0.9.3"
-parse_int = "0.5.0"
-csv="1.1.6"
 
 angora_common = {path = "../common" }
 runtime = {path = "../runtime" }

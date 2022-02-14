@@ -29,12 +29,12 @@ pub fn merge_offsets(v1: &Vec<TagSeg>, v2: &Vec<TagSeg>) -> Vec<TagSeg> {
             o2 = v2_it.next();
         } else if b1 < b2 {
             v.push(o1.unwrap().clone());
-            // merge_push(&mut v, &o1.unwrap());
+            //merge_push(&mut v, &o1.unwrap());
             o1 = v1_it.next();
         } else {
             // b2 < b1
             v.push(o2.unwrap().clone());
-            // merge_push(&mut v, &o2.unwrap());
+            //merge_push(&mut v, &o2.unwrap());
             o2 = v2_it.next();
         }
     }
@@ -204,4 +204,5 @@ mod tests {
         // assert_eq!(v1[0].end, v3[2].begin);
         // assert_eq!(v2[0].end, v3[2].end);
     }
+
 }

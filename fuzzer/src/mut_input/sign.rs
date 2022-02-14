@@ -99,14 +99,14 @@ impl SignInfo {
                 let mut assign_prob = |s, inc| match s {
                     Sign::Signed => signed += inc,
                     Sign::Unsigned => unsigned += inc,
-                    _ => {},
+                    _ => {}
                 };
                 assign_prob(stat, 1.0);
                 // We trust dynamic more.
                 assign_prob(dyn_n, 2.0);
                 assign_prob(dyn_s, 2.0);
                 signed / (signed + unsigned)
-            },
+            }
         };
         Self {
             static_sign,

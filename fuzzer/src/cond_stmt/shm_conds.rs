@@ -1,15 +1,10 @@
 use super::CondOutput;
 use crate::cond_stmt;
-use angora_common::{cond_stmt_base::CondStmtBase, debug_cmpid, defs, shm};
-use std::{self, fmt, ops::Deref};
+use angora_common::{cond_stmt_base::CondStmtBase, defs, shm};
+use std;
+
 pub struct ShmConds {
     pub cond: shm::SHM<CondStmtBase>,
-}
-
-impl fmt::Debug for ShmConds {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{:?}", self.cond.deref())
-    }
 }
 
 impl ShmConds {
@@ -65,7 +60,7 @@ impl ShmConds {
 
     pub fn get_cond_output(&self) -> i128 {
         if !self.is_cond_reachable() {
-            debug_cmpid!(self.cond.cmpid, "unreachable, output is MAX");
+            debug!("unreachable, output is MAX");
             return defs::UNREACHABLE;
         }
         let mut output = self.cond.get_output();

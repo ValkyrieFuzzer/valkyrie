@@ -40,7 +40,7 @@ impl fmt::Display for ConstraintStats {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
-            "CMP: {}, BOOL: {}, SWITCH: {}",
+            "CMP: {}, BOOL: {}, SW: {}",
             self.num_cmp, self.num_bool, self.num_switch
         )
     }

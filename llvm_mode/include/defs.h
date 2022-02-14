@@ -10,8 +10,7 @@
 // #define ALLOC_PRELOAD
 
 // Without taint tracking
-#define CLANG_FAST_TYPE 0b0000
-
+#define CLANG_FAST_TYPE 0
 // With LLVM's taint tracking and save constraints
 #define CLANG_TRACK_TYPE 1
 // Just do data tracking
@@ -36,21 +35,19 @@
 #define COND_BOOL_MASK 0x200
 // #define COND_CALL_MASK 0x400
 // #define COND_BR_MASK 0x800
-#define COND_EXPLOIT_MASK 0x3000
-#define COND_EXPLOIT_INT_MASK 0x1000
-#define COND_EXPLOIT_MEM_MASK 0x2000
+#define COND_EXPLOIT_MASK 0x4000
 #define COND_FN_TYPE 0x8002
 #define COND_LEN_TYPE 0x8003
 
 #ifdef DEBUG_INFO
 // #define DEBUG_PRINTF printf
-#define DEBUG_PRINTF(...) \
-  do {                    \
-    printf(__VA_ARGS__);  \
+#define DEBUG_PRINTF(...)                                                      \
+  do {                                                                         \
+    printf(__VA_ARGS__);                                                       \
   } while (0)
 #else
-#define DEBUG_PRINTF(...) \
-  do {                    \
+#define DEBUG_PRINTF(...)                                                      \
+  do {                                                                         \
   } while (0)
 #endif
 

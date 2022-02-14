@@ -8,7 +8,8 @@ static StringRef GetGlobalTypeString(const GlobalValue &G) {
   Type *GType = G.getValueType();
   // For now we support blacklisting struct types only.
   if (StructType *SGType = dyn_cast<StructType>(GType)) {
-    if (!SGType->isLiteral()) return SGType->getName();
+    if (!SGType->isLiteral())
+      return SGType->getName();
   }
   return "<unknown type>";
 }
@@ -16,7 +17,7 @@ static StringRef GetGlobalTypeString(const GlobalValue &G) {
 class AngoraABIList {
   std::unique_ptr<SpecialCaseList> SCL;
 
- public:
+public:
   AngoraABIList() {}
   void set(std::unique_ptr<SpecialCaseList> List) { SCL = std::move(List); }
   /// Returns whether either this function or its source file are listed in the
@@ -27,14 +28,10 @@ class AngoraABIList {
   }
 
   bool isIn(Instruction &Inst, StringRef Category) const {
-    if (CallBase *Caller = dyn_cast<CallBase>(&Inst)) {
-      Function *callee = Caller->getCalledFunction();
-      // It's possible the caller is not a function(e.g. asm)
-      if (callee) {
-        return SCL_INSECTION(SCL, "angora", "fun", callee->getName(), Category);
-      } else {
-        return false;
-      }
+    if (isa<CallInst>(&Inst)) {
+      CallInst *Caller = dyn_cast<CallInst>(&Inst);
+      return SCL_INSECTION(SCL, "angora", "fun",
+                           Caller->getCalledFunction()->getName(), Category);
     }
     return SCL_INSECTION(SCL, "angora", "ins", Inst.getOpcodeName(), Category);
   }
@@ -44,7 +41,8 @@ class AngoraABIList {
   /// If GA aliases a function, the alias's name is matched as a function name
   /// would be.  Similarly, aliases of globals are matched like globals.
   bool isIn(const GlobalAlias &GA, StringRef Category) const {
-    if (isIn(*GA.getParent(), Category)) return true;
+    if (isIn(*GA.getParent(), Category))
+      return true;
 
     if (isa<FunctionType>(GA.getValueType()))
       return SCL_INSECTION(SCL, "angora", "fun", GA.getName(), Category);

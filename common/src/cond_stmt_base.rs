@@ -1,6 +1,5 @@
 use crate::defs::*;
 use serde_derive::{Deserialize, Serialize};
-use std::hash::{Hash, Hasher};
 
 #[derive(Debug, Clone, Default, Copy, Serialize, Deserialize)]
 #[repr(C)] // It should be repr C since we will used it in shared memory
@@ -29,22 +28,15 @@ pub struct CondStmtMb {
     pub magic_bytes: Option<(Vec<u8>, Vec<u8>)>,
 }
 */
-/*
+
 impl PartialEq for CondStmtBase {
     fn eq(&self, other: &CondStmtBase) -> bool {
-        self.cmpid == other.cmpid && self.context == other.context && self.belong == other.belong
+        self.cmpid == other.cmpid && self.context == other.context && self.order == other.order
     }
 }
+
 impl Eq for CondStmtBase {}
 
-impl Hash for CondStmtBase {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.cmpid.hash(state);
-        self.context.hash(state);
-        self.belong.hash(state);
-    }
-}
-*/
 impl CondStmtBase {
     pub fn flip_condition(&mut self) {
         if self.condition == COND_FALSE_ST {
@@ -54,20 +46,11 @@ impl CondStmtBase {
         }
     }
     pub fn is_explore(&self) -> bool {
-        (self.op & COND_SPECIAL_MASK) == 0 && (self.op & COND_EXPLOIT_MASK) == 0
+        self.op <= COND_MAX_EXPLORE_OP
     }
 
     pub fn is_exploitable(&self) -> bool {
-        (self.op & COND_SPECIAL_MASK) == 0 && (self.op & COND_EXPLOIT_MASK) != 0
-    }
-    pub fn is_exploit_int(&self) -> bool {
-        (self.op & COND_EXPLOIT_MASK) == COND_EXPLOIT_INT_MASK
-    }
-    pub fn is_exploit_mem(&self) -> bool {
-        (self.op & COND_EXPLOIT_MASK) == COND_EXPLOIT_MEM_MASK
-    }
-    pub fn is_exploit_rand(&self) -> bool {
-        (self.op & COND_EXPLOIT_MASK) == COND_EXPLOIT_RAND_MASK
+        self.op > COND_MAX_EXPLORE_OP && self.op <= COND_MAX_EXPLOIT_OP
     }
 
     pub fn is_signed(&self) -> bool {
@@ -103,13 +86,5 @@ impl CondStmtBase {
             op = COND_ICMP_EQ_OP;
         }
         op == COND_ICMP_EQ_OP || op == COND_ICMP_NE_OP
-    }
-
-    pub fn is_gd_search(&self) -> bool {
-        debug_assert!(
-            (self.op < COND_SPECIAL_MASK && self.op != COND_EXPLOIT_RAND_MASK)
-                == (self.is_exploitable() || self.is_explore())
-        );
-        self.op < COND_SPECIAL_MASK && self.op != COND_EXPLOIT_RAND_MASK
     }
 }

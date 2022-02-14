@@ -40,22 +40,22 @@ pub fn set_val_in_buf(buf: &mut Vec<u8>, off: usize, size: usize, val: u64) {
         1 => {
             let v = &mut buf[off];
             *v = val as u8;
-        },
+        }
         2 => {
             let v = unsafe { &mut *(&mut buf[off] as *mut u8 as *mut u16) };
             *v = val as u16;
-        },
+        }
         4 => {
             let v = unsafe { &mut *(&mut buf[off] as *mut u8 as *mut u32) };
             *v = val as u32;
-        },
+        }
         8 => {
             let v = unsafe { &mut *(&mut buf[off] as *mut u8 as *mut u64) };
             *v = val as u64;
-        },
+        }
         _ => {
             panic!("strange arg off and size: {}, {}", off, size);
-        },
+        }
     };
 }
 
@@ -67,7 +67,7 @@ pub fn get_val_in_buf(buf: &mut Vec<u8>, off: usize, size: usize) -> u64 {
         8 => *unsafe { &mut *(&mut buf[off] as *mut u8 as *mut u64) } as u64,
         _ => {
             panic!("strange arg off and size: {}, {}", off, size);
-        },
+        }
     }
 }
 pub fn reverse_endian(val: u64, size: usize) -> u64 {
@@ -78,7 +78,7 @@ pub fn reverse_endian(val: u64, size: usize) -> u64 {
         8 => (val as u64).swap_bytes() as u64,
         _ => {
             panic!("strange arg size and val: {}, {}", size, val);
-        },
+        }
     }
 }
 
@@ -106,7 +106,7 @@ pub fn update_val_in_buf(
                 (false, true) => (val as u8).wrapping_add(delta as u8) as u8,
                 (false, false) => (val as u8).wrapping_sub(delta as u8) as u8,
             } as u64;
-        },
+        }
         2 => {
             val = match (sign, direction) {
                 (true, true) => (val as i16).wrapping_add(delta as i16) as u16,
@@ -114,7 +114,7 @@ pub fn update_val_in_buf(
                 (false, true) => (val as u16).wrapping_add(delta as u16) as u16,
                 (false, false) => (val as u16).wrapping_sub(delta as u16) as u16,
             } as u64;
-        },
+        }
         4 => {
             val = match (sign, direction) {
                 (true, true) => (val as i32).wrapping_add(delta as i32) as u32,
@@ -122,7 +122,7 @@ pub fn update_val_in_buf(
                 (false, true) => (val as u32).wrapping_add(delta as u32) as u32,
                 (false, false) => (val as u32).wrapping_sub(delta as u32) as u32,
             } as u64;
-        },
+        }
         8 => {
             val = match (sign, direction) {
                 (true, true) => (val as i64).wrapping_add(delta as i64) as u64,
@@ -130,10 +130,10 @@ pub fn update_val_in_buf(
                 (false, true) => (val as u64).wrapping_add(delta as u64) as u64,
                 (false, false) => (val as u64).wrapping_sub(delta as u64) as u64,
             } as u64;
-        },
+        }
         _ => {
             panic!("strange arg off and size: {}, {}", off, size);
-        },
+        }
     };
     if swap_endian {
         val = reverse_endian(val, size);

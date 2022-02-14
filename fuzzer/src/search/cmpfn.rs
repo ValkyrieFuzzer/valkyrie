@@ -1,6 +1,5 @@
 use super::*;
-use angora_common::{debug_cmpid, tag::TagSeg};
-
+use angora_common::tag::TagSeg;
 pub struct FnFuzz<'a> {
     handler: SearchHandler<'a>,
 }
@@ -11,7 +10,7 @@ impl<'a> FnFuzz<'a> {
     }
 
     fn insert_bytes(&mut self, n: usize) {
-        debug_cmpid!(self.handler.cond.base.cmpid, "add {} bytes", n);
+        debug!("add {} bytes", n);
         let last = self.handler.cond.offsets.last().unwrap();
         let off = last.begin as usize;
         let mut end = last.end;
@@ -32,7 +31,7 @@ impl<'a> FnFuzz<'a> {
     }
 
     fn remove_bytes(&mut self, n: usize) {
-        debug_cmpid!(self.handler.cond.base.cmpid, "remove {} bytes", n);
+        debug!("remove {} bytes", n);
         for _ in 0..n {
             let last = self.handler.cond.offsets.last().unwrap();
             let off = last.begin as usize;

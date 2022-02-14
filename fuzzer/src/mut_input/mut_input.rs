@@ -3,7 +3,7 @@ use crate::{
     mut_input::sign::{Sign, SignInfo},
     search,
 };
-use angora_common::config::{self, FuzzerConfig};
+use angora_common::config::{self};
 use rand::{self, distributions::Uniform, Rng};
 use std::{
     cmp,
@@ -21,11 +21,7 @@ pub enum Endian {
 }
 impl Default for Endian {
     fn default() -> Self {
-        if FuzzerConfig::get().assume_be() {
-            Self::BigEndian
-        } else {
-            Self::LittleEndian
-        }
+        Self::LittleEndian
     }
 }
 
@@ -488,7 +484,7 @@ impl MutInput {
             Ok(v) => v,
             Err(_) => {
                 panic!("meta: {:?}", self.meta);
-            },
+            }
         }
     }
 
@@ -564,11 +560,11 @@ impl MutInput {
             (1, false) => {
                 let val: u8 = self.value[item.offset] as u8;
                 Numeral::from_numerical(val)
-            },
+            }
             (1, true) => {
                 let val: i8 = self.value[item.offset] as i8;
                 Numeral::from_numerical(val)
-            },
+            }
             (2, false) => {
                 let mut b = [0_u8; 2];
                 b.copy_from_slice(&self.value[range]);
@@ -578,7 +574,7 @@ impl MutInput {
                     Endian::Split => panic!("Multi-byte value shouldn't have Endian::Split."),
                 };
                 Numeral::from_numerical(val)
-            },
+            }
             (2, true) => {
                 let mut b = [0_u8; 2];
                 b.copy_from_slice(&self.value[range]);
@@ -588,7 +584,7 @@ impl MutInput {
                     Endian::Split => panic!("Multi-byte value shouldn't have Endian::Split."),
                 };
                 Numeral::from_numerical(val)
-            },
+            }
             (4, false) => {
                 let mut b = [0_u8; 4];
                 b.copy_from_slice(&self.value[range]);
@@ -598,7 +594,7 @@ impl MutInput {
                     Endian::Split => panic!("Multi-byte value shouldn't have Endian::Split."),
                 };
                 Numeral::from_numerical(val)
-            },
+            }
             (4, true) => {
                 let mut b = [0_u8; 4];
                 b.copy_from_slice(&self.value[range]);
@@ -608,7 +604,7 @@ impl MutInput {
                     Endian::Split => panic!("Multi-byte value shouldn't have Endian::Split."),
                 };
                 Numeral::from_numerical(val)
-            },
+            }
             (8, false) => {
                 let mut b = [0_u8; 8];
                 b.copy_from_slice(&self.value[range]);
@@ -618,7 +614,7 @@ impl MutInput {
                     Endian::Split => panic!("Multi-byte value shouldn't have Endian::Split."),
                 };
                 Numeral::from_numerical(val)
-            },
+            }
             (8, true) => {
                 let mut b = [0_u8; 8];
                 b.copy_from_slice(&self.value[range]);
@@ -628,7 +624,7 @@ impl MutInput {
                     Endian::Split => panic!("Multi-byte value shouldn't have Endian::Split."),
                 };
                 Numeral::from_numerical(val)
-            },
+            }
             _ => unimplemented!(),
         }
     }
@@ -640,7 +636,7 @@ impl MutInput {
         match len {
             1 => {
                 self.value[meta.offset] = val as u8;
-            },
+            }
             2 => {
                 let val = match meta.endian {
                     Endian::LittleEndian => val as u16,
@@ -651,7 +647,7 @@ impl MutInput {
                 unsafe {
                     *ptr = val;
                 }
-            },
+            }
             4 => {
                 let val = match meta.endian {
                     Endian::LittleEndian => val as u32,
@@ -662,7 +658,7 @@ impl MutInput {
                 unsafe {
                     *ptr = val;
                 }
-            },
+            }
             8 => {
                 let val = match meta.endian {
                     Endian::LittleEndian => val as u64,
@@ -673,7 +669,7 @@ impl MutInput {
                 unsafe {
                     *ptr = val;
                 }
-            },
+            }
             _ => unimplemented!(),
         }
     }
@@ -760,35 +756,35 @@ impl MutInput {
             (1, true) => {
                 let res = self.add_inplace::<i8>(raw_pointer, delta);
                 res.0 as f64 - res.1 as f64
-            },
+            }
             (2, true) => {
                 let res = self.add_inplace::<i16>(raw_pointer, delta);
                 res.0 as f64 - res.1 as f64
-            },
+            }
             (4, true) => {
                 let res = self.add_inplace::<i32>(raw_pointer, delta);
                 res.0 as f64 - res.1 as f64
-            },
+            }
             (8, true) => {
                 let res = self.add_inplace::<i64>(raw_pointer, delta);
                 res.0 as f64 - res.1 as f64
-            },
+            }
             (1, false) => {
                 let res = self.add_inplace::<u8>(raw_pointer, delta);
                 res.0 as f64 - res.1 as f64
-            },
+            }
             (2, false) => {
                 let res = self.add_inplace::<u16>(raw_pointer, delta);
                 res.0 as f64 - res.1 as f64
-            },
+            }
             (4, false) => {
                 let res = self.add_inplace::<u32>(raw_pointer, delta);
                 res.0 as f64 - res.1 as f64
-            },
+            }
             (8, false) => {
                 let res = self.add_inplace::<u64>(raw_pointer, delta);
                 res.0 as f64 - res.1 as f64
-            },
+            }
             _ => unimplemented!(),
         }
     }
@@ -947,19 +943,19 @@ impl MutInput {
                     let byte_idx: u32 = rng.gen_range(0, byte_len);
                     let bit_idx: u32 = rng.gen_range(0, 8);
                     self.value[byte_idx as usize] ^= 128 >> bit_idx;
-                },
+                }
                 2 => {
                     // add
                     let entry_idx: u32 = rng.gen_range(0, entry_len);
                     let v: u32 = rng.gen_range(1, config::MUTATE_ARITH_MAX);
                     self.update(entry_idx as usize, true, v as u64);
-                },
+                }
                 3 => {
                     // sub
                     let entry_idx: u32 = rng.gen_range(0, entry_len);
                     let v: u32 = rng.gen_range(1, config::MUTATE_ARITH_MAX);
                     self.update(entry_idx as usize, false, v as u64);
-                },
+                }
                 4 => {
                     // set interesting value
                     let entry_idx: u32 = rng.gen_range(0, entry_len as u32);
@@ -967,27 +963,21 @@ impl MutInput {
                     let vals = search::get_interesting_bytes(n);
                     let wh = rng.gen_range(0, vals.len() as u32);
                     self.set(entry_idx as usize, vals[wh as usize]);
-                },
+                }
                 5 => {
                     // random byte
                     let byte_idx: u32 = rng.gen_range(0, byte_len);
                     // self.randomize_one_byte(byte_idx as usize);
                     self.value[byte_idx as usize] = rng.gen();
-                },
-                _ => {},
+                }
+                _ => {}
             }
         }
     }
     pub fn assign_sign<R: Rng>(&mut self, rng: &mut R) {
-        self.meta.iter_mut().for_each(|meta| {
-            meta.set_sign(
-                if FuzzerConfig::get().enable_random_sign() {
-                    meta.sign_info.get_random_sign(rng)
-                } else {
-                    meta.sign_info.get_concensus_sign()
-                },
-            )
-        });
+        self.meta
+            .iter_mut()
+            .for_each(|meta| meta.set_sign(meta.sign_info.get_concensus_sign()));
     }
 
     /// Fill nth buffer with a u8 `fill`. Then trim head and tail accordingly.
@@ -1016,15 +1006,15 @@ impl MutInput {
             Endian::LittleEndian => {
                 trim_head(&mut buf[len - 1]);
                 trim_tail(&mut buf[0]);
-            },
+            }
             Endian::BigEndian => {
                 trim_head(&mut buf[0]);
                 trim_tail(&mut buf[len - 1]);
-            },
+            }
             Endian::Split => {
                 trim_head(&mut buf[len - 1]);
                 trim_tail(&mut buf[0]);
-            },
+            }
         };
     }
     /// Validate all input segments.
@@ -1170,30 +1160,5 @@ impl fmt::Debug for MutInput {
             )?
         }
         Ok(())
-    }
-}
-
-mod test {
-    use super::*;
-    use angora_common::config::{FuzzerConfig, CONFIG};
-    #[test]
-    fn test_clone_buf_and_do() {
-        CONFIG.set(FuzzerConfig::default()).unwrap();
-        let mut input = MutInput::new();
-        input.push(vec![4; 4], true);
-        input.push(vec![2; 2], true);
-        input.push(vec![1; 1], true);
-        assert_eq!(input.value, vec![4, 4, 4, 4, 2, 2, 1]);
-        let (sum, buf) = input.clone_buf_and_do(|input| {
-            let mut sum = 0;
-            for v in input.value.iter_mut() {
-                *v -= 1;
-                sum += *v;
-            }
-            sum
-        });
-        assert_eq!(input.value, vec![4, 4, 4, 4, 2, 2, 1]);
-        assert_eq!(buf, vec![3, 3, 3, 3, 1, 1, 0]);
-        assert_eq!(sum, 14);
     }
 }

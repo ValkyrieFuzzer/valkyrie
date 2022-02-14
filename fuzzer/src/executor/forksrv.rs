@@ -37,13 +37,13 @@ impl Forksrv {
         time_limit: u64,
         mem_limit: u64,
     ) -> Forksrv {
-        info!("socket_path: {:?}", socket_path);
+        debug!("socket_path: {:?}", socket_path);
         let listener = match UnixListener::bind(socket_path) {
             Ok(sock) => sock,
             Err(e) => {
                 error!("FATAL: Failed to bind to socket: {:?}", e);
                 panic!();
-            },
+            }
         };
 
         let mut envs_fk = envs.clone();
@@ -64,7 +64,7 @@ impl Forksrv {
             Err(e) => {
                 error!("FATAL: Failed to spawn child. Reason: {}", e);
                 panic!();
-            },
+            }
         };
 
         // FIXME: block here if client doesn't exist.
@@ -73,7 +73,7 @@ impl Forksrv {
             Err(e) => {
                 error!("FATAL: failed to accept from socket: {:?}", e);
                 panic!();
-            },
+            }
         };
 
         socket
@@ -83,7 +83,7 @@ impl Forksrv {
             .set_write_timeout(Some(Duration::from_secs(time_limit)))
             .expect("Couldn't set write timeout");
 
-        info!("All right -- Init ForkServer {} successfully!", socket_path);
+        debug!("All right -- Init ForkServer {} successfully!", socket_path);
 
         Forksrv {
             path: socket_path.to_owned(),
@@ -108,20 +108,20 @@ impl Forksrv {
                     Err(e) => {
                         warn!("Unable to recover child pid: {:?}", e);
                         return StatusType::Error;
-                    },
+                    }
                 };
                 if child_pid <= 0 {
                     warn!(
-                        "Unable to request new process from fork server! {}",
+                        "Unable to request new process from frok server! {}",
                         child_pid
                     );
                     return StatusType::Error;
                 }
-            },
+            }
             Err(error) => {
                 warn!("Fail to read child_id -- {}", error);
                 return StatusType::Error;
-            },
+            }
         }
 
         buf = vec![0; 4];
@@ -135,17 +135,17 @@ impl Forksrv {
                     Err(e) => {
                         warn!("Unable to recover result from child: {}", e);
                         return StatusType::Error;
-                    },
+                    }
                 };
-                let exit_code = libc::WEXITSTATUS(status);
-                let signaled = libc::WIFSIGNALED(status);
+                let exit_code = unsafe { libc::WEXITSTATUS(status) };
+                let signaled = unsafe { libc::WIFSIGNALED(status) };
                 if signaled || (self.uses_asan && exit_code == MSAN_ERROR_CODE) {
-                    trace!("Crash code: {}", status);
+                    debug!("Crash code: {}", status);
                     StatusType::Crash
                 } else {
                     StatusType::Normal
                 }
-            },
+            }
 
             Err(_) => {
                 unsafe {
@@ -156,18 +156,18 @@ impl Forksrv {
                     warn!("Killing timed out process");
                 }
                 return StatusType::Timeout;
-            },
+            }
         }
     }
 }
 
 impl Drop for Forksrv {
     fn drop(&mut self) {
-        info!("Exit Forksrv");
+        debug!("Exit Forksrv");
         // Tell the child process to exit
         let fin = [0u8; 2];
         if self.socket.write(&fin).is_err() {
-            info!("Fail to write socket !!  FIN ");
+            debug!("Fail to write socket !!  FIN ");
         }
         let path = Path::new(&self.path);
         if path.exists() {

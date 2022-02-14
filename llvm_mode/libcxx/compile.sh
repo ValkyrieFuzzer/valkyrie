@@ -3,12 +3,7 @@
 BIN_PATH=$(readlink -f "$0")
 ROOT_DIR=$(dirname $(dirname $(dirname $BIN_PATH)))
 
-LINUX_VER=${LINUX_VER:-ubuntu-16.04}
-LLVM_VERSION=${LLVM_VERSION:-11.1.0}
-
-LLVM_DEP_URL=https://github.com/llvm/llvm-project/releases
-TAR_NAME=clang+llvm-${LLVM_VERSION}-x86_64-linux-gnu-${LINUX_VER}
-
+LLVM_VERSION=7.0.0
 
 NINJA_B=`which ninja 2>/dev/null`
 
@@ -24,13 +19,13 @@ CUR_DIR=`pwd`
 CLANG_SRC=${CUR_DIR}/llvm_src
 
 if [ ! -d $CLANG_SRC ]; then
-wget ${LLVM_DEP_URL}/download/llvmorg-${LLVM_VERSION}/llvm-${LLVM_VERSION}.src.tar.xz
-wget ${LLVM_DEP_URL}/download/llvmorg-${LLVM_VERSION}/clang-${LLVM_VERSION}.src.tar.xz
-wget ${LLVM_DEP_URL}/download/llvmorg-${LLVM_VERSION}/compiler-rt-${LLVM_VERSION}.src.tar.xz
-wget ${LLVM_DEP_URL}/download/llvmorg-${LLVM_VERSION}/libcxx-${LLVM_VERSION}.src.tar.xz
-wget ${LLVM_DEP_URL}/download/llvmorg-${LLVM_VERSION}/libcxxabi-${LLVM_VERSION}.src.tar.xz
-wget ${LLVM_DEP_URL}/download/llvmorg-${LLVM_VERSION}/libunwind-${LLVM_VERSION}.src.tar.xz
-wget ${LLVM_DEP_URL}/download/llvmorg-${LLVM_VERSION}/clang-tools-extra-${LLVM_VERSION}.src.tar.xz
+wget http://releases.llvm.org/${LLVM_VERSION}/llvm-${LLVM_VERSION}.src.tar.xz
+wget http://releases.llvm.org/${LLVM_VERSION}/cfe-${LLVM_VERSION}.src.tar.xz
+wget http://releases.llvm.org/${LLVM_VERSION}/compiler-rt-${LLVM_VERSION}.src.tar.xz
+wget http://releases.llvm.org/${LLVM_VERSION}/libcxx-${LLVM_VERSION}.src.tar.xz
+wget http://releases.llvm.org/${LLVM_VERSION}/libcxxabi-${LLVM_VERSION}.src.tar.xz
+wget http://releases.llvm.org/${LLVM_VERSION}/libunwind-${LLVM_VERSION}.src.tar.xz
+wget http://releases.llvm.org/${LLVM_VERSION}/clang-tools-extra-${LLVM_VERSION}.src.tar.xz
 
 
 rm -rf $CLANG_SRC
@@ -39,8 +34,8 @@ tar -Jxf ${CUR_DIR}/llvm-${LLVM_VERSION}.src.tar.xz
 mv llvm-${LLVM_VERSION}.src $CLANG_SRC
 
 cd ${CLANG_SRC}/tools
-tar -Jxf ${CUR_DIR}/clang-${LLVM_VERSION}.src.tar.xz 
-mv clang-${LLVM_VERSION}.src clang
+tar -Jxf ${CUR_DIR}/cfe-${LLVM_VERSION}.src.tar.xz 
+mv cfe-${LLVM_VERSION}.src clang
 cd ${CLANG_SRC}/tools/clang/tools
 tar -Jxf ${CUR_DIR}/clang-tools-extra-${LLVM_VERSION}.src.tar.xz 
 mv clang-tools-extra-${LLVM_VERSION}.src extra

@@ -5,7 +5,7 @@ extern crate log;
 #[macro_use]
 extern crate derive_more;
 
-pub mod branches;
+mod branches;
 pub mod cond_stmt;
 mod depot;
 pub mod executor;

@@ -133,7 +133,7 @@ impl<'a> AFLFuzz<'a> {
                     let byte_idx: u32 = rng.gen_range(0, byte_len);
                     let bit_idx: u32 = rng.gen_range(0, 8);
                     buf[byte_idx as usize] ^= 128 >> bit_idx;
-                },
+                }
                 4..=15 => {
                     // set interesting value
                     let n: u32 = rng.gen_range(0, 3);
@@ -151,7 +151,7 @@ impl<'a> AFLFuzz<'a> {
                         }
                         mut_input::set_val_in_buf(buf, byte_idx as usize, size, val);
                     }
-                },
+                }
                 16..=39 => {
                     // random add or sub
                     let n: u32 = rng.gen_range(0, 3);
@@ -174,13 +174,13 @@ impl<'a> AFLFuzz<'a> {
                             v as u64,
                         );
                     }
-                },
+                }
                 40..=43 => {
                     // random byte
                     let byte_idx: u32 = rng.gen_range(0, byte_len);
                     let val: u8 = rng.gen();
                     buf[byte_idx as usize] = val;
-                },
+                }
                 44..=46 => {
                     // Clone bytes.
                     let mut size = self.random_block_len(byte_len);
@@ -200,7 +200,7 @@ impl<'a> AFLFuzz<'a> {
                             .collect(),
                         before_idx as usize,
                     );
-                },
+                }
                 47 => {
                     let mut size = self.random_block_len(byte_len);
                     let before_idx: u32 = rng.gen_range(0, byte_len + 1);
@@ -215,7 +215,7 @@ impl<'a> AFLFuzz<'a> {
                         vec![rng.gen(); size as usize],
                         before_idx as usize,
                     );
-                },
+                }
                 48..=50 => {
                     // overwrite bytes.
                     let size = self.random_block_len(byte_len);
@@ -227,13 +227,13 @@ impl<'a> AFLFuzz<'a> {
                         size as usize,
                         to_idx as usize,
                     );
-                },
+                }
                 51 => {
                     // overwrite bytes with constant
                     let size = self.random_block_len(byte_len) as usize;
                     let to_idx = rng.gen_range(0, byte_len - size as u32 + 1) as usize;
                     buf[to_idx..to_idx + size].copy_from_slice(&vec![rng.gen(); size]);
-                },
+                }
                 52..=59 => {
                     // Delete bytes.
                     let size = self.random_block_len(byte_len) as usize;
@@ -242,8 +242,8 @@ impl<'a> AFLFuzz<'a> {
                     new_buf[..from_idx].copy_from_slice(&buf[..from_idx]);
                     new_buf[from_idx..].copy_from_slice(&buf[from_idx + size..]);
                     *buf = new_buf;
-                },
-                _ => {},
+                }
+                _ => {}
             }
         }
     }
@@ -258,7 +258,7 @@ impl<'a> AFLFuzz<'a> {
                 } else {
                     (1500, angora_common::config::MAX_INPUT_LEN as u32)
                 }
-            },
+            }
         };
         if min >= limit {
             min = std::cmp::min(1, limit - 1);

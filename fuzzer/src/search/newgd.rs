@@ -1,8 +1,8 @@
 use super::*;
 use crate::mut_input::sign::{Sign, SignInfo};
 use angora_common::{
-    config::{self, FuzzerConfig},
-    debug_cmpid, defs,
+    config::{self},
+    defs,
 };
 use log::debug;
 
@@ -139,12 +139,12 @@ impl<'a> IntGdSearch<'a> {
         if self.handler.skip {
             return self.handler.executor.last_f;
         }
-        debug_cmpid!(self.cmpid, "input: {:?}", input);
+        debug!("input: {:?}", input);
         let f = self.handler.execute_cond(input);
         f
     }
     fn execute_cond(&mut self, input: &MutInput) -> f64 {
-        debug_cmpid!(self.cmpid, "input: {:?}", input);
+        debug!("input: {:?}", input);
         let f_new = self.handler.execute_cond(input);
         if f_new == defs::UNREACHABLE {
             f64::INFINITY
@@ -169,8 +169,7 @@ impl<'a> IntGdSearch<'a> {
         let mut idx = 0;
         let mut grad = Vec::with_capacity(x.len());
         while idx < x.len() {
-            if FuzzerConfig::get().enable_dyn_endian()
-                && ep_i == 0
+            if ep_i == 0
                 && self.handler.cond.is_second_time()
                 // && partial_grad > 100.0
                 && x.get_entry_len(idx) > 1
@@ -211,19 +210,19 @@ impl<'a> IntGdSearch<'a> {
         // Prepare sub_x with only one dimension of the original input
         // but we split it into bytes to see the grad change.
         let mut sub_x = x.clone_nth(idx);
-        debug_cmpid!(self.cmpid, "Before endian split: {:?}", sub_x);
+        debug!("Before endian split: {:?}", sub_x);
         sub_x.split_meta_w_sign_change(0, |input| {
             input.infer_dyn_sign(|input| self.execute_cond(input));
             input.assign_sign(&mut rand::thread_rng());
-            debug_cmpid!(self.cmpid, "Done inference new sign: {:?}", input);
+            debug!("Done inference new sign: {:?}", input);
         });
         debug_assert!(len == sub_x.len());
-        debug_cmpid!(self.cmpid, "After endian split: {:?}", sub_x);
+        debug!("After endian split: {:?}", sub_x);
 
         let partial_grad: Vec<f64> = (0..len)
             .map(|idx| self.partial_gradient(&mut sub_x, idx, fx))
             .collect();
-        debug_cmpid!(self.cmpid, "Partial grad for each byte: {:?}", partial_grad);
+        debug!("Partial grad for each byte: {:?}", partial_grad);
 
         let grad_abs: Vec<f64> = partial_grad.iter().map(|g| g.abs()).collect();
         // Process data points.
@@ -239,7 +238,7 @@ impl<'a> IntGdSearch<'a> {
 
         if ascend == descend {
             // No endianness, should split this var into bytes.
-            debug_cmpid!(self.cmpid, "Split");
+            debug!("Split");
             x.split_meta_w_sign_change(idx, |input| {
                 let meta = input.get_mut_meta();
                 sub_x
@@ -252,13 +251,13 @@ impl<'a> IntGdSearch<'a> {
             (true, Some(partial_grad))
         } else if ascend {
             // Big endian
-            debug_cmpid!(self.cmpid, "Big Endian");
+            debug!("Big Endian");
             x.nth_to_be_w_sign_change(idx, |input| self.execute_cond(input));
             (true, None)
         } else if descend {
             // Little endian
             // But we assumed le, then this must be a large partial gradient.
-            debug_cmpid!(self.cmpid, "Little Endian");
+            debug!("Little Endian");
             (false, None)
         } else {
             unreachable!("Shouldn't be here");
@@ -297,19 +296,9 @@ impl<'a> IntGdSearch<'a> {
         };
 
         let (add_one_val, add_step) = perturbate(self, 1f64);
-        debug_cmpid!(
-            self.cmpid,
-            "add_one_val, step: {}, {}",
-            add_one_val,
-            add_step
-        );
+        debug!("add_one_val, step: {}, {}", add_one_val, add_step);
         let (sub_one_val, sub_step) = perturbate(self, -1f64);
-        debug_cmpid!(
-            self.cmpid,
-            "sub_one_val, step: {}, {}",
-            sub_one_val,
-            sub_step
-        );
+        debug!("sub_one_val, step: {}, {}", sub_one_val, sub_step);
 
         // NAN is meant for crashing trials when we first developed
         // this algorithm. But in Angora's framework, unreachable and crash
@@ -319,7 +308,7 @@ impl<'a> IntGdSearch<'a> {
             unreachable!("Shouldn't be here");
         // f64::NAN
         } else {
-            // debug_cmpid!(self.cmpid, "add_one_val={}, sub_one_val={}", add_one_val,sub_one_val);
+            // debug!("add_one_val={}, sub_one_val={}", add_one_val,sub_one_val);
             match (add_one_val.is_infinite(), sub_one_val.is_infinite()) {
                 (true, true) => 0f64,
                 (true, false) => (fx - sub_one_val) / sub_step,
@@ -327,7 +316,7 @@ impl<'a> IntGdSearch<'a> {
                 (false, false) => (add_one_val - sub_one_val) / (add_step + sub_step),
             }
         };
-        // debug_cmpid!(self.cmpid, "ret={}",ret);
+        // debug!("ret={}",ret);
         ret
     }
 
@@ -348,18 +337,18 @@ impl<'a> IntGdSearch<'a> {
             "Input length == 0!! {:?}",
             self.handler.cond
         );
-        debug_cmpid!(self.cmpid, "Init start...");
+        debug!("Init start...");
         let f0 = if self.handler.cond.more_than_twice() {
             self.execute(&input)
         } else {
             self.handler.cond.linear = true;
             self.init_start_point(&mut input)
         };
-        debug_cmpid!(self.cmpid, "Init start magic done, f0 = {}...", f0);
+        debug!("Init start magic done, f0 = {}...", f0);
 
         // The magic before has done all the work for us.
         if self.handler.cond.is_done() {
-            debug_cmpid!(self.cmpid, "Cond is solved using initial magic");
+            debug!("Cond is solved using initial magic");
             return;
         }
         if f0 == defs::UNREACHABLE {
@@ -368,22 +357,15 @@ impl<'a> IntGdSearch<'a> {
         }
 
         // If we decides to do dynamic sign inference.
-        if FuzzerConfig::get().enable_dyn_sign() {
-            if self.handler.cond.is_second_time() {
-                debug_cmpid!(self.cmpid, "Before dyn sign inference: {:?}", input);
-                input.infer_dyn_sign(|input| self.execute_cond(input));
-                if self.handler.cond.is_done() {
-                    debug_cmpid!(self.cmpid, "Cond is solved when inferring sign");
-                    return;
-                }
-                input.assign_sign(rng);
-                debug_cmpid!(self.cmpid, "After dyn sign inference: {:?}", input);
+        if self.handler.cond.is_second_time() {
+            debug!("Before dyn sign inference: {:?}", input);
+            input.infer_dyn_sign(|input| self.execute_cond(input));
+            if self.handler.cond.is_done() {
+                debug!("Cond is solved when inferring sign");
+                return;
             }
-            // If we are RANDOM_SIGN, assign sign everytime.
-            if FuzzerConfig::get().enable_random_sign() && self.handler.cond.more_than_twice() {
-                input.assign_sign(rng);
-                debug_cmpid!(self.cmpid, "Assigned sign: {:?}", input);
-            }
+            input.assign_sign(rng);
+            debug!("After dyn sign inference: {:?}", input);
         }
 
         let mut grad;
@@ -392,12 +374,12 @@ impl<'a> IntGdSearch<'a> {
             if self.handler.is_stopped_or_skip() {
                 break;
             }
-            debug_cmpid!(self.cmpid, ">>> epoch={}, fcurr={}", ep_i, f_curr);
+            debug!(">>> epoch={}, fcurr={}", ep_i, f_curr);
             grad = self.gradient_may_split(&mut input, f_curr, ep_i);
-            debug_cmpid!(self.cmpid, "input: {:?}", input);
-            debug_cmpid!(self.cmpid, "grad: {:?}", grad);
+            debug!("input: {:?}", input);
+            debug!("grad: {:?}", grad);
             if grad.iter_raw().find(|x| x.is_nan()).is_some() {
-                debug_cmpid!(self.cmpid, "Encountered NaN. Aborting");
+                debug!("Encountered NaN. Aborting");
                 unreachable!();
             }
             let (f_new, status) = self.descend(grad, &mut input, f_curr);
@@ -405,7 +387,7 @@ impl<'a> IntGdSearch<'a> {
                 DescendStatus::SolvedHalfWay => return,
                 DescendStatus::StepTooLarge => {
                     f_curr = f_new;
-                },
+                }
                 DescendStatus::LeadsToHigherValue
                 | DescendStatus::Unable
                 | DescendStatus::ZeroGrad => {
@@ -416,7 +398,7 @@ impl<'a> IntGdSearch<'a> {
                         self.repick_start_point(&mut input, f_curr, rng);
                         f_curr = self.execute_cond(&input);
                     }
-                },
+                }
             }
         }
     }
@@ -457,7 +439,7 @@ impl<'a> IntGdSearch<'a> {
         } else {
             get_factor_of_coefficients(&ics_pos).min(get_factor_of_coefficients(&ics_neg))
         };
-        debug_cmpid!(self.cmpid, "factor={}", factor);
+        debug!("factor={}", factor);
 
         let mut descend_delta = grad.iter_raw().map(|x| -x * factor).collect::<Vec<_>>();
         let mut ascend_delta = descend_delta.iter().map(|x| -x).collect::<Vec<_>>();
@@ -466,7 +448,7 @@ impl<'a> IntGdSearch<'a> {
         let mut started = false;
 
         loop {
-            debug_cmpid!(self.cmpid, "x_curr={:?}, f_curr={}", x_curr, f_curr);
+            debug!("x_curr={:?}, f_curr={}", x_curr, f_curr);
 
             // let mut x_new = vec![];
             let mut buf_new = vec![];
@@ -563,14 +545,14 @@ impl<'a> IntGdSearch<'a> {
             */
             if buf_new.is_empty() && i == 0 {
                 let (moved, buf) = x_curr.clone_buf_and_do(|x_copy| {
-                    debug_cmpid!(self.cmpid, "inc_lsb");
+                    debug!("inc_lsb");
                     x_copy.inc_lsb(&ics_neg)
                 });
                 if moved {
                     buf_new.push(buf);
                 }
                 let (moved, buf) = x_curr.clone_buf_and_do(|x_copy| {
-                    debug_cmpid!(self.cmpid, "dec_lsb");
+                    debug!("dec_lsb");
                     x_copy.dec_lsb(&ics_pos)
                 });
                 if moved {
@@ -581,12 +563,12 @@ impl<'a> IntGdSearch<'a> {
             if x_new.is_empty() && i == 0 {
                 let mut x_copy = x_curr.clone();
                 if x_copy.inc_lsb(&ics_neg) {
-                    debug_cmpid!(self.cmpid, "inc_lsb");
+                    debug!("inc_lsb");
                     x_new.push(x_copy);
                 }
                 let mut x_copy = x_curr.clone();
                 if x_copy.dec_lsb(&ics_pos) {
-                    debug_cmpid!(self.cmpid, "dec_lsb");
+                    debug!("dec_lsb");
                     x_new.push(x_copy);
                 }
             }
@@ -596,7 +578,7 @@ impl<'a> IntGdSearch<'a> {
 
             for buf in buf_new.into_iter() {
                 let (f_new, buf) = x_curr.replace_buf_and_do(buf, |x_| self.execute_cond(&x_));
-                debug_cmpid!(self.cmpid, "value={:?}, f_new={}", buf, f_new);
+                debug!("value={:?}, f_new={}", buf, f_new);
                 if f_new.is_infinite() {
                     continue;
                 } else if self.is_solved(f_new) {
@@ -615,7 +597,7 @@ impl<'a> IntGdSearch<'a> {
             /*
             for x_ in x_new.into_iter() {
                 let f_new = self.execute_cond(&x_);
-                debug_cmpid!(self.cmpid, "x_={:?}, f_new={}", x_, f_new);
+                debug!("x_={:?}, f_new={}", x_, f_new);
                 if f_new.is_infinite() {
                     continue;
                 } else if self.is_solved(f_new) {
@@ -635,8 +617,7 @@ impl<'a> IntGdSearch<'a> {
             */
             if !found {
                 let status = if started {
-                    debug_cmpid!(
-                        self.cmpid,
+                    debug!(
                         "Cannot make such step(size = {}), maybe step size is too high.",
                         1 << i,
                     );
@@ -645,17 +626,13 @@ impl<'a> IntGdSearch<'a> {
                     // Can't start, but the gradient is fresh.
                     if all_inf {
                         // TODO: Gradient is wrong.
-                        debug_cmpid!(
-                            self.cmpid,
-                            "Cannot move even if step size is 1. Every step leads to inf, this is a trap.",
+                        debug!(                            "Cannot move even if step size is 1. Every step leads to inf, this is a trap.",
                         );
                         DescendStatus::Unable
                     } else {
                         //  We can make steps, it's just that they all lead to higher values.
                         // We are at local minima.
-                        debug_cmpid!(
-                            self.cmpid,
-                            "Cannot move even if step size is 1. Every step leads to higher value, this is a local minima.",
+                        debug!(                            "Cannot move even if step size is 1. Every step leads to higher value, this is a local minima.",
                         );
                         DescendStatus::LeadsToHigherValue
                     }
